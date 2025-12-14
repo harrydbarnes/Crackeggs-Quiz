@@ -121,18 +121,26 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start; /* Changed from center to flex-start */
-    padding: 80px 24px 24px 24px; /* Added top padding for spacing */
+    justify-content: flex-start; /* Top aligned */
+    padding: 80px 24px 24px 24px;
     box-sizing: border-box;
     text-align: center;
     width: 100%;
     animation: fade-slide-in 0.4s ease-out;
 }
 
-/* Pass screen needs to be centered still */
+/* Used only if centering is strictly required (e.g. splash screen) */
+/* Modified to still be relatively high up but centered vertically if needed */
 .view-centered {
     justify-content: center !important;
     padding-top: 24px !important;
+    /* Actually user asked for higher up for Intro too.
+       So let's remove the forced centering or make it higher.
+       Let's use a smaller top padding but keep flex-start
+       or just rely on default view style which is flex-start + 80px padding.
+    */
+    justify-content: flex-start !important;
+    padding-top: 120px !important; /* Push it down a bit so it's not hugging top, but definitely upper half */
 }
 
 @keyframes fade-slide-in {
@@ -214,6 +222,7 @@ input[type=range] {
 
 .correct { color: green; }
 .incorrect { color: red; }
+.partial { color: #f57f17; } /* Orange/Amber for partial points */
 
 /* Leaderboard */
 .leaderboard-item {

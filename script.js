@@ -96,6 +96,20 @@ function resetGame() {
     }
 }
 
+function calculatePoints(question, answer) {
+    if (question.type === 'who_said_it') {
+        return (answer === question.correctAnswer) ? 1000 : 0;
+    } else {
+        const diff = Math.abs(answer - question.correctAnswer);
+        const range = question.max - question.min;
+        const safeRange = range === 0 ? 1 : range;
+
+        // Linear drop off
+        const points = Math.max(0, 1000 * (1 - (diff / safeRange)));
+        return Math.round(points);
+    }
+}
+
 function render() {
     const app = document.getElementById('app');
 
@@ -105,10 +119,6 @@ function render() {
             updateMenu();
             return;
         }
-        // For game, we usually re-render on new question anyway,
-        // but if we wanted to animate question transition we could do it here.
-        // For now, let's keep full re-render for game to ensure fresh state,
-        // but menu is the critical one for "flicker free options".
     }
 
     lastRenderedView = state.view;
@@ -162,6 +172,7 @@ function render() {
 
 function renderIntro() {
     const div = document.createElement('div');
+    // Using view-centered for slight offset, but style.css modified it to be top-aligned with more padding
     div.className = 'view view-centered';
     div.innerHTML = `
         <h1 id="intro-title">Ready to crack eggs?</h1>
@@ -211,12 +222,15 @@ function renderMenu() {
         </div>
 
         <div class="subtitle" style="margin-top: 20px;">Reveal Answers</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
              <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
              <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
         </div>
+        <div class="info-text" id="reveal-desc" style="max-width: 300px;">
+             <!-- text populated by updateMenu -->
+        </div>
 
-        <div style="margin-bottom: 20px;">
+        <div style="margin-bottom: 20px; margin-top: 10px;">
              <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
              <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
              <input type="number" id="seed-input" placeholder="Random" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
@@ -236,13 +250,11 @@ function renderMenu() {
         }
     };
 
-    // Defer update to next tick so DOM is ready
     setTimeout(updateMenu, 0);
 
     return div;
 }
 
-// Helpers for Menu updates
 window.setMode = (m) => setState({ mode: m });
 window.setCount = (n) => setState({ questionCount: n });
 window.setReveal = (atEnd) => setState({ revealAtEnd: atEnd });
@@ -261,6 +273,9 @@ function updateMenu() {
     // Reveal
     document.getElementById('reveal-immediate').className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('reveal-end').className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
+    document.getElementById('reveal-desc').innerText = state.revealAtEnd ?
+        'Correct answers hidden until the very end. Perfect for competitive party play!' :
+        'See the correct answer and points immediately after every question.';
 }
 
 
@@ -317,7 +332,6 @@ function startGame(players, seed) {
     const rng = new Random(seed);
     let pool = [...window.QUESTION_DATABASE];
 
-    // Deterministic shuffle
     for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(rng.nextFloat() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -344,6 +358,7 @@ function startGame(players, seed) {
 function renderPassScreen() {
     const player = state.players[state.currentPlayerIndex];
     const div = document.createElement('div');
+    // Also use view-centered for Pass screen
     div.className = 'view view-centered';
     div.style.backgroundColor = 'var(--md-sys-color-primary)';
     div.style.color = 'var(--md-sys-color-on-primary)';
@@ -426,19 +441,77 @@ function renderGame() {
     feedback.style.marginTop = '10px';
     div.appendChild(feedback);
 
+    // Add Next Button (Hidden initially)
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn btn-filled hidden';
+    nextBtn.style.marginTop = '20px';
+    nextBtn.style.width = '100%';
+    nextBtn.innerText = 'Next Question';
+    div.appendChild(nextBtn);
+
+    // Logic for next button
+    // When answer submitted, show feedback, THEN show Next button.
+    // Click Next -> submitAnswer -> render
+
+    let currentAnswer = null;
+
+    const handleAnswer = (answer) => {
+        currentAnswer = answer;
+
+        // Disable inputs
+        if (question.type === 'who_said_it') {
+            card.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+        } else {
+            card.querySelector('#submit-slider').disabled = true;
+            card.querySelector('#slider-input').disabled = true;
+        }
+
+        // Show Feedback
+        if (state.revealAtEnd) {
+             feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
+        } else {
+            const points = calculatePoints(question, answer);
+
+            if (question.type === 'who_said_it') {
+                const isCorrect = points > 0;
+                feedback.innerHTML = isCorrect ?
+                        '<span class="correct">Correct! +1000 pts</span>' :
+                        `<span class="incorrect">Wrong! It was ${escapeHTML(question.correctAnswer)}</span>`;
+            } else {
+                // Slider
+                const diff = Math.abs(answer - question.correctAnswer);
+                let msg = '';
+                if (diff === 0) {
+                    msg = '<span class="correct">Exact Match! +1000 pts</span>';
+                } else {
+                    const ansText = question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer;
+                    if (points > 0) {
+                        msg = `<span class="partial">Close! The answer was ${ansText}. <br>+${points} pts</span>`;
+                    } else {
+                        msg = `<span class="incorrect">Missed it! The answer was ${ansText}. <br>0 pts</span>`;
+                    }
+                }
+                feedback.innerHTML = msg;
+            }
+        }
+
+        // Show Next Button
+        nextBtn.classList.remove('hidden');
+        nextBtn.onclick = () => {
+            submitAnswer(question.id, currentAnswer);
+        };
+    };
+
     if (question.type === 'who_said_it') {
         const opts = card.querySelectorAll('.option-btn');
         opts.forEach(btn => {
             btn.onclick = () => {
-                opts.forEach(b => b.disabled = true);
-
                 const chosen = btn.dataset.value;
+                // Visual selection state
                 const isCorrect = chosen === question.correctAnswer;
 
                 if (state.revealAtEnd) {
                     btn.classList.add('btn-filled');
-                    feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
-                    setTimeout(() => submitAnswer(question.id, chosen), 800);
                 } else {
                     btn.classList.add(isCorrect ? 'btn-filled' : 'btn-tonal');
                     if (!isCorrect) {
@@ -448,13 +521,8 @@ function renderGame() {
                         btn.style.backgroundColor = '#c8e6c9';
                         btn.style.borderColor = 'green';
                     }
-
-                    feedback.innerHTML = isCorrect ?
-                        '<span class="correct">Correct!</span>' :
-                        `<span class="incorrect">Wrong! It was ${escapeHTML(question.correctAnswer)}</span>`;
-
-                    setTimeout(() => submitAnswer(question.id, chosen), 1500);
                 }
+                handleAnswer(chosen);
             };
         });
     } else {
@@ -467,22 +535,7 @@ function renderGame() {
         };
 
         subBtn.onclick = () => {
-            subBtn.disabled = true;
-            slider.disabled = true;
-            const val = parseInt(slider.value);
-
-            if (state.revealAtEnd) {
-                feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
-                setTimeout(() => submitAnswer(question.id, val), 800);
-            } else {
-                const diff = Math.abs(val - question.correctAnswer);
-                let msg = '';
-                if (diff === 0) msg = '<span class="correct">Exact Match!</span>';
-                else msg = `<span>The answer was ${question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer}</span>`;
-
-                feedback.innerHTML = msg;
-                setTimeout(() => submitAnswer(question.id, val), 1500);
-            }
+            handleAnswer(parseInt(slider.value));
         };
     }
 
@@ -514,15 +567,7 @@ function calculateScores() {
         let score = 0;
         state.questions.forEach(q => {
             const ans = state.answers[p][q.id];
-            if (q.type === 'who_said_it') {
-                if (ans === q.correctAnswer) score += 1000;
-            } else {
-                const diff = Math.abs(ans - q.correctAnswer);
-                const range = q.max - q.min;
-                const safeRange = range === 0 ? 1 : range;
-                const points = Math.max(0, 1000 * (1 - (diff / safeRange)));
-                score += Math.round(points);
-            }
+            score += calculatePoints(q, ans);
         });
         state.scores[p] = score;
     });
