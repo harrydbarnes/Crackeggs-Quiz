@@ -20,6 +20,119 @@ let lastRenderedView = null;
 
 const STORAGE_KEY = 'crackeggs_quiz_state_v3';
 
+// --- UI Utilities ---
+
+function createUIContainers() {
+    const app = document.body;
+
+    // Toast Container
+    if (!document.getElementById('toast-container')) {
+        const tc = document.createElement('div');
+        tc.id = 'toast-container';
+        app.appendChild(tc);
+    }
+
+    // Modal Overlay
+    if (!document.getElementById('modal-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.id = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-box">
+                <div class="modal-title" id="modal-title"></div>
+                <div class="modal-content" id="modal-content"></div>
+                <div class="modal-actions" id="modal-actions"></div>
+            </div>
+        `;
+        app.appendChild(overlay);
+    }
+}
+
+function showToast(message, duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return; // Guard
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerText = message;
+    container.appendChild(toast);
+
+    // Trigger reflow
+    void toast.offsetWidth;
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (container.contains(toast)) container.removeChild(toast);
+        }, 300);
+    }, duration);
+}
+
+function showModal(title, content, actions = []) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('modal-overlay');
+        const mTitle = document.getElementById('modal-title');
+        const mContent = document.getElementById('modal-content');
+        const mActions = document.getElementById('modal-actions');
+
+        if (title) {
+             mTitle.innerText = title;
+             mTitle.style.display = 'block';
+        } else {
+             mTitle.style.display = 'none';
+        }
+
+        mContent.innerText = content || '';
+        mActions.innerHTML = '';
+
+        if (actions.length === 0) {
+            // Default OK
+            actions.push({ text: 'OK', primary: true, value: true });
+        }
+
+        actions.forEach(action => {
+            const btn = document.createElement('button');
+            if (action.style === 'text') {
+                 btn.className = 'btn';
+            } else {
+                 btn.className = action.primary ? 'btn btn-filled' : 'btn btn-outlined';
+            }
+            // Overrides
+            btn.innerText = action.text;
+            btn.style.marginLeft = '8px';
+            btn.onclick = () => {
+                closeModal();
+                resolve(action.value);
+            };
+            mActions.appendChild(btn);
+        });
+
+        overlay.classList.add('show');
+
+        function closeModal() {
+            overlay.classList.remove('show');
+        }
+    });
+}
+
+function triggerConfetti() {
+    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+
+    for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 98 + 'vw';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        confetti.style.opacity = Math.random();
+        document.body.appendChild(confetti);
+
+        setTimeout(() => {
+            if (document.body.contains(confetti)) document.body.removeChild(confetti);
+        }, 5000);
+    }
+}
+
+
 // --- Utilities ---
 
 class Random {
@@ -91,6 +204,7 @@ function loadState() {
 // --- App Logic ---
 
 function init() {
+    createUIContainers();
     loadState();
     render();
 }
@@ -102,9 +216,14 @@ function setState(newState) {
 }
 
 function resetGame() {
-    if (confirm("Are you sure you want to quit to the main menu?")) {
-        setState({ view: 'menu' });
-    }
+    showModal("Quit Game?", "Are you sure you want to quit to the main menu?", [
+        { text: "Cancel", primary: false, value: false },
+        { text: "Quit", primary: true, value: true }
+    ]).then(result => {
+        if (result) {
+            setState({ view: 'menu' });
+        }
+    });
 }
 
 function calculatePoints(question, answer) {
@@ -347,7 +466,7 @@ function renderSetup() {
         const inputs = div.querySelectorAll('.player-input');
         const players = Array.from(inputs).map(i => i.value.trim()).filter(v => v);
         if (players.length < 1) {
-            alert("Need at least 1 player!");
+            showToast("Need at least 1 player!");
             return;
         }
         startGame(players, state.seed);
@@ -464,127 +583,133 @@ function renderGame() {
 
         // Handlers
         btn5050.onclick = () => {
-            if (confirm("Use 50/50 Chip?")) {
-                chips['5050'] = false;
-                btn5050.disabled = true;
+            showModal("Use 50/50 Chip?", "This will remove 2 incorrect options.", [
+                { text: "Cancel", primary: false, value: false },
+                { text: "Use Chip", primary: true, value: true }
+            ]).then(result => {
+                if (result) {
+                    chips['5050'] = false;
+                    btn5050.disabled = true;
 
-                // Hide 2 wrong options
-                const opts = Array.from(card.querySelectorAll('.option-btn'));
-                const correct = question.correctAnswer;
-                const wrongOpts = opts.filter(b => b.dataset.value !== correct);
+                    // Hide 2 wrong options
+                    const opts = Array.from(card.querySelectorAll('.option-btn'));
+                    const correct = question.correctAnswer;
+                    const wrongOpts = opts.filter(b => b.dataset.value !== correct);
 
-                // Shuffle wrong opts
-                for (let i = wrongOpts.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [wrongOpts[i], wrongOpts[j]] = [wrongOpts[j], wrongOpts[i]];
+                    // Shuffle wrong opts
+                    for (let i = wrongOpts.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [wrongOpts[i], wrongOpts[j]] = [wrongOpts[j], wrongOpts[i]];
+                    }
+
+                    // Hide first 2
+                    if (wrongOpts.length >= 2) {
+                        wrongOpts[0].style.visibility = 'hidden';
+                        wrongOpts[1].style.visibility = 'hidden';
+                    }
+                    saveState();
                 }
-
-                // Hide first 2
-                if (wrongOpts.length >= 2) {
-                    wrongOpts[0].style.visibility = 'hidden';
-                    wrongOpts[1].style.visibility = 'hidden';
-                }
-                saveState();
-            }
+            });
         };
 
         btnRange.onclick = () => {
-             if (confirm("Use Range Chip?")) {
-                 chips['range'] = false;
-                 btnRange.disabled = true;
+             showModal("Use Range Chip?", "This will reduce the slider range to 20%.", [
+                 { text: "Cancel", primary: false, value: false },
+                 { text: "Use Chip", primary: true, value: true }
+             ]).then(result => {
+                 if (result) {
+                     chips['range'] = false;
+                     btnRange.disabled = true;
 
-                 const slider = card.querySelector('#slider-input');
-                 const currentRange = question.max - question.min;
-                 const newRangeSize = currentRange * 0.2; // 20%
+                     const slider = card.querySelector('#slider-input');
+                     const currentRange = question.max - question.min;
+                     const newRangeSize = currentRange * 0.2; // 20%
 
-                 const half = newRangeSize / 2;
-                 let newMin = Math.floor(question.correctAnswer - half);
-                 let newMax = Math.ceil(question.correctAnswer + half);
+                     const half = newRangeSize / 2;
+                     let newMin = Math.floor(question.correctAnswer - half);
+                     let newMax = Math.ceil(question.correctAnswer + half);
 
-                 // Clamp
-                 if (newMin < question.min) newMin = question.min;
-                 if (newMax > question.max) newMax = question.max;
+                     // Clamp
+                     if (newMin < question.min) newMin = question.min;
+                     if (newMax > question.max) newMax = question.max;
 
-                 // Update slider
-                 slider.min = newMin;
-                 slider.max = newMax;
-                 slider.value = question.correctAnswer; // Snap to answer? Or center?
-                 // Usually hints don't snap you exactly.
-                 // But range reducer effectively zooms you in.
-                 // Let's set value to start of range or center? Center.
-                 const mid = Math.floor((newMin + newMax) / 2);
-                 slider.value = mid;
+                     // Update slider
+                     slider.min = newMin;
+                     slider.max = newMax;
+                     slider.value = question.correctAnswer; // Snap to answer? Or center?
+                     const mid = Math.floor((newMin + newMax) / 2);
+                     slider.value = mid;
 
-                 // Update display
-                 card.querySelector('#slider-val').innerText = question.type === 'when' ? formatDate(mid) : mid;
+                     // Update display
+                     card.querySelector('#slider-val').innerText = question.type === 'when' ? formatDate(mid) : mid;
 
-                 // Feedback
-                 alert("Range reduced! The answer is within the new slider limits.");
-                 saveState();
-             }
+                     // Feedback
+                     showToast("Range reduced! The answer is within the new slider limits.");
+                     saveState();
+                 }
+             });
         };
 
         btnAudience.onclick = () => {
-             if (confirm("Ask the Audience?")) {
-                 chips['audience'] = false;
-                 btnAudience.disabled = true;
+             showModal("Ask the Audience?", "See what the (virtual) audience thinks.", [
+                 { text: "Cancel", primary: false, value: false },
+                 { text: "Ask", primary: true, value: true }
+             ]).then(result => {
+                 if (result) {
+                     chips['audience'] = false;
+                     btnAudience.disabled = true;
 
-                 if (question.type === 'who_said_it') {
-                     // Generate votes
-                     const opts = question.options;
-                     const correct = question.correctAnswer;
-                     let remainingPercent = 100;
-                     let votes = {};
+                     if (question.type === 'who_said_it') {
+                         // Generate votes
+                         const opts = question.options;
+                         const correct = question.correctAnswer;
+                         let remainingPercent = 100;
+                         let votes = {};
 
-                     // 60% chance audience is right? Or 60% of votes go to right?
-                     // "60% likely they suggest the correct answer".
-                     // This means 60% chance correct gets majority.
-                     // Let's implement: 60% chance correct gets 50-80%. 40% chance it gets 10-40%.
-                     const isSmart = Math.random() < 0.6;
-                     const correctShare = isSmart ? (50 + Math.random() * 30) : (Math.random() * 40);
+                         const isSmart = Math.random() < 0.6;
+                         const correctShare = isSmart ? (50 + Math.random() * 30) : (Math.random() * 40);
 
-                     votes[correct] = correctShare;
-                     remainingPercent -= correctShare;
+                         votes[correct] = correctShare;
+                         remainingPercent -= correctShare;
 
-                     const others = opts.filter(o => o !== correct);
-                     others.forEach((o, idx) => {
-                         if (idx === others.length - 1) {
-                             votes[o] = remainingPercent;
-                         } else {
-                             const share = Math.random() * remainingPercent;
-                             votes[o] = share;
-                             remainingPercent -= share;
-                         }
-                     });
+                         const others = opts.filter(o => o !== correct);
+                         others.forEach((o, idx) => {
+                             if (idx === others.length - 1) {
+                                 votes[o] = remainingPercent;
+                             } else {
+                                 const share = Math.random() * remainingPercent;
+                                 votes[o] = share;
+                                 remainingPercent -= share;
+                             }
+                         });
 
-                     // Show chart
-                     let msg = "Audience Vote:\n";
-                     opts.forEach(o => {
-                         msg += `${o}: ${Math.round(votes[o])}%\n`;
-                     });
-                     alert(msg);
+                         // Show chart
+                         let msg = "";
+                         opts.forEach(o => {
+                             msg += `${o}: ${Math.round(votes[o])}%\n`;
+                         });
+                         showModal("Audience Vote", msg);
 
-                 } else {
-                     // Slider
-                     // "Audience thinks the answer is..."
-                     // 60% chance they are close.
-                     const isSmart = Math.random() < 0.6;
-                     let guess;
-                     if (isSmart) {
-                         // Within 10% range
-                         const range = question.max - question.min;
-                         const offset = (Math.random() - 0.5) * (range * 0.1);
-                         guess = question.correctAnswer + offset;
                      } else {
-                         // Random within range
-                         guess = question.min + Math.random() * (question.max - question.min);
+                         // Slider
+                         const isSmart = Math.random() < 0.6;
+                         let guess;
+                         if (isSmart) {
+                             // Within 10% range
+                             const range = question.max - question.min;
+                             const offset = (Math.random() - 0.5) * (range * 0.1);
+                             guess = question.correctAnswer + offset;
+                         } else {
+                             // Random within range
+                             guess = question.min + Math.random() * (question.max - question.min);
+                         }
+                         guess = Math.round(guess);
+                         const val = question.type === 'when' ? formatDate(guess) : guess;
+                         showModal("Audience Says", `The audience thinks the answer is around: ${val}`);
                      }
-                     guess = Math.round(guess);
-                     const val = question.type === 'when' ? formatDate(guess) : guess;
-                     alert(`The audience thinks the answer is around: ${val}`);
+                     saveState();
                  }
-                 saveState();
-             }
+             });
         };
     }
 
@@ -807,6 +932,9 @@ function renderResults() {
             // Start reveal
             let i = sortedPlayers.length - 1;
 
+            // Trigger Confetti
+            triggerConfetti();
+
             const revealNext = () => {
                 if (i >= 0) {
                     const p = sortedPlayers[i];
@@ -858,7 +986,7 @@ function renderResults() {
                 text: text
             }).catch(console.error);
         } else {
-            navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
+            navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard!"));
         }
     };
 
