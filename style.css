@@ -132,15 +132,16 @@ body {
 /* Used only if centering is strictly required (e.g. splash screen) */
 /* Modified to still be relatively high up but centered vertically if needed */
 .view-centered {
-    justify-content: center !important;
-    padding-top: 24px !important;
-    /* Actually user asked for higher up for Intro too.
-       So let's remove the forced centering or make it higher.
-       Let's use a smaller top padding but keep flex-start
-       or just rely on default view style which is flex-start + 80px padding.
-    */
     justify-content: flex-start !important;
     padding-top: 120px !important; /* Push it down a bit so it's not hugging top, but definitely upper half */
+}
+
+/* Intro Text Container for smooth animation */
+#intro-text-container {
+    transition: height 0.3s ease;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    width: 100%;
 }
 
 @keyframes fade-slide-in {
@@ -167,6 +168,7 @@ h1 {
     margin-bottom: 1rem;
     color: var(--md-sys-color-primary);
     margin-top: 0;
+    transition: opacity 0.3s ease;
 }
 
 h2 {

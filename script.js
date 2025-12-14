@@ -175,20 +175,49 @@ function renderIntro() {
     // Using view-centered for slight offset, but style.css modified it to be top-aligned with more padding
     div.className = 'view view-centered';
     div.innerHTML = `
-        <h1 id="intro-title">Ready to crack eggs?</h1>
+        <div id="intro-text-container">
+            <h1 id="intro-title" style="margin:0;">Ready to crack eggs?</h1>
+        </div>
         <button class="btn btn-filled" id="intro-btn">Click me</button>
     `;
 
     const btn = div.querySelector('#intro-btn');
     const title = div.querySelector('#intro-title');
+    const container = div.querySelector('#intro-text-container');
 
     btn.onclick = () => {
         if (btn.innerText === "Click me") {
+            // 1. Measure current height
+            const startHeight = container.offsetHeight;
+            container.style.height = `${startHeight}px`;
+
+            // 2. Fade out text
             title.style.opacity = 0;
+
             setTimeout(() => {
+                // 3. Swap text
                 title.innerText = "No, you're not egging Olli, that was yesterday silly!";
+
+                // 4. Measure new height
+                container.style.height = 'auto';
+                const newHeight = container.offsetHeight;
+
+                // Set back to start to animate
+                container.style.height = `${startHeight}px`;
+
+                // Force reflow
+                void container.offsetHeight;
+
+                // 5. Animate to new height
+                container.style.height = `${newHeight}px`;
                 title.style.opacity = 1;
+
                 btn.innerText = "Let's Play";
+
+                // Cleanup after transition
+                setTimeout(() => {
+                    container.style.height = 'auto';
+                }, 300);
             }, 300);
         } else {
             div.classList.add('fade-out');
@@ -570,7 +599,6 @@ function renderResults() {
 
     const sortedPlayers = [...state.players].sort((a, b) => state.scores[b] - state.scores[a]);
 
-    // Drum roll button
     let drumRollHtml = `
         <button class="btn btn-filled" id="drum-roll-btn" style="padding: 20px; font-size: 1.2rem; margin-bottom: 20px;">
             🥁 Drum Roll 🥁
@@ -603,10 +631,8 @@ function renderResults() {
     const homeBtn = div.querySelector('#home-btn');
 
     drumBtn.onclick = () => {
-        // Hide button
-        div.querySelector('#drum-container').innerHTML = ''; // or hide
+        div.querySelector('#drum-container').innerHTML = '';
 
-        // Start Reveal Logic
         let i = sortedPlayers.length - 1;
 
         const revealNext = () => {
@@ -639,14 +665,11 @@ function renderResults() {
                 i--;
                 setTimeout(revealNext, 1500);
             } else {
-                // Done revealing
                 actionButtons.classList.remove('hidden');
-                // Celebrate?
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 400]);
             }
         };
 
-        // Start immediate
         revealNext();
     };
 
