@@ -10,10 +10,13 @@ const state = {
     answers: {}, // { playerName: { questionId: answer } }
     scores: {}, // { playerName: score }
     seed: null,
-    revealAtEnd: false // New state
+    revealAtEnd: false
 };
 
-const STORAGE_KEY = 'crackeggs_quiz_state_v2'; // Bump version
+// Track current view to allow smooth updates
+let lastRenderedView = null;
+
+const STORAGE_KEY = 'crackeggs_quiz_state_v2';
 
 // --- Utilities ---
 
@@ -96,7 +99,19 @@ function resetGame() {
 function render() {
     const app = document.getElementById('app');
 
-    // Fade out old content? (Simple replacement for now, CSS handles entry animation)
+    // If view hasn't changed, try to update in-place
+    if (state.view === lastRenderedView) {
+        if (state.view === 'menu') {
+            updateMenu();
+            return;
+        }
+        // For game, we usually re-render on new question anyway,
+        // but if we wanted to animate question transition we could do it here.
+        // For now, let's keep full re-render for game to ensure fresh state,
+        // but menu is the critical one for "flicker free options".
+    }
+
+    lastRenderedView = state.view;
     app.innerHTML = '';
 
     // Global Elements (Top Bar)
@@ -105,6 +120,9 @@ function render() {
         topBar.className = 'top-bar';
         topBar.innerHTML = `
             <button class="icon-btn material-symbols-outlined" id="back-btn">arrow_back</button>
+            <span id="header-code" style="margin-left: auto; align-self: center; font-weight: 500; margin-right: 16px; opacity: 0.7;">
+               ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
+            </span>
         `;
         topBar.querySelector('#back-btn').onclick = () => {
             if (state.view === 'menu') {
@@ -144,7 +162,7 @@ function render() {
 
 function renderIntro() {
     const div = document.createElement('div');
-    div.className = 'view view-centered'; // Intro centered
+    div.className = 'view view-centered';
     div.innerHTML = `
         <h1 id="intro-title">Ready to crack eggs?</h1>
         <button class="btn btn-filled" id="intro-btn">Click me</button>
@@ -155,7 +173,6 @@ function renderIntro() {
 
     btn.onclick = () => {
         if (btn.innerText === "Click me") {
-            // Animate text change
             title.style.opacity = 0;
             setTimeout(() => {
                 title.innerText = "No, you're not egging Olli, that was yesterday silly!";
@@ -179,41 +196,34 @@ function renderMenu() {
 
         <div class="subtitle">Select Game Mode</div>
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <button class="btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}" id="mode-solo">
-                Solo Run
-            </button>
-            <button class="btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}" id="mode-party">
-                Party Mode
-            </button>
+            <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
+            <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
         </div>
-        <div class="info-text">
-            ${state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.'}
+        <div class="info-text" id="mode-desc">
+            <!-- text populated by updateMenu -->
         </div>
 
         <div class="subtitle" style="margin-top: 20px;">Number of Questions</div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}" onclick="setCount(5)">5</button>
-            <button class="btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}" onclick="setCount(10)">10</button>
-            <button class="btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}" onclick="setCount(20)">20</button>
+            <button class="btn" id="count-5" onclick="setCount(5)">5</button>
+            <button class="btn" id="count-10" onclick="setCount(10)">10</button>
+            <button class="btn" id="count-20" onclick="setCount(20)">20</button>
         </div>
 
         <div class="subtitle" style="margin-top: 20px;">Reveal Answers</div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-             <button class="btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}" onclick="setReveal(false)">Immediately</button>
-             <button class="btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}" onclick="setReveal(true)">At End</button>
+             <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
+             <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
         </div>
 
         <div style="margin-bottom: 20px;">
-             <label style="display:block; margin-bottom: 5px; font-weight:500;">Game Seed (Optional)</label>
+             <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
              <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
              <input type="number" id="seed-input" placeholder="Random" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
         </div>
 
         <button class="btn btn-filled" style="width: 200px; margin-top: 20px;" id="start-btn">Start Game</button>
     `;
-
-    div.querySelector('#mode-solo').onclick = () => setState({ mode: 'solo' });
-    div.querySelector('#mode-party').onclick = () => setState({ mode: 'party' });
 
     div.querySelector('#start-btn').onclick = () => {
         const seedInput = div.querySelector('#seed-input').value;
@@ -226,21 +236,39 @@ function renderMenu() {
         }
     };
 
+    // Defer update to next tick so DOM is ready
+    setTimeout(updateMenu, 0);
+
     return div;
 }
 
-window.setCount = (n) => {
-    setState({ questionCount: n });
-};
+// Helpers for Menu updates
+window.setMode = (m) => setState({ mode: m });
+window.setCount = (n) => setState({ questionCount: n });
+window.setReveal = (atEnd) => setState({ revealAtEnd: atEnd });
 
-window.setReveal = (atEnd) => {
-    setState({ revealAtEnd: atEnd });
-};
+function updateMenu() {
+    // Mode
+    document.getElementById('mode-solo').className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
+    document.getElementById('mode-party').className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
+    document.getElementById('mode-desc').innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
+
+    // Count
+    document.getElementById('count-5').className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
+    document.getElementById('count-10').className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
+    document.getElementById('count-20').className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
+
+    // Reveal
+    document.getElementById('reveal-immediate').className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
+    document.getElementById('reveal-end').className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
+}
+
 
 function renderSetup() {
     const div = document.createElement('div');
     div.className = 'view';
     div.innerHTML = `
+        <h2 style="margin-top: 0;">Quiz Code: ${state.seed}</h2>
         <h2>Who is playing?</h2>
         <div class="subtitle">Enter player names in order. Pass the phone when prompted.</div>
         <div id="players-list" style="width: 100%; margin-bottom: 20px;">
@@ -319,10 +347,6 @@ function renderPassScreen() {
     div.className = 'view view-centered';
     div.style.backgroundColor = 'var(--md-sys-color-primary)';
     div.style.color = 'var(--md-sys-color-on-primary)';
-
-    // Make sure we are not asking Player 1 to pass to Player 1 at start of Solo (although mode handles that)
-    // For party mode, if index is 0, just say "Start: [Player 1]"?
-    // "The phone is passed around. The screen indicates: 'Pass to [Name]'."
 
     let titleText = "Pass the phone to";
     if (state.currentPlayerIndex === 0) {
@@ -412,7 +436,7 @@ function renderGame() {
                 const isCorrect = chosen === question.correctAnswer;
 
                 if (state.revealAtEnd) {
-                    btn.classList.add('btn-filled'); // Just highlight selection
+                    btn.classList.add('btn-filled');
                     feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
                     setTimeout(() => submitAnswer(question.id, chosen), 800);
                 } else {
@@ -512,7 +536,7 @@ function renderResults() {
 
     let html = `
         <h1>Results</h1>
-        <div class="subtitle">Game Seed: ${state.seed}</div>
+        <div class="subtitle">Quiz Code: ${state.seed}</div>
         <div id="leaderboard" style="width: 100%; max-width: 400px; margin-bottom: 20px;">
         </div>
 
@@ -563,7 +587,7 @@ function renderResults() {
     setTimeout(revealNext, 500);
 
     shareBtn.onclick = () => {
-        let text = `Crackeggs Quiz Results (Seed: ${state.seed})\n`;
+        let text = `Crackeggs Quiz Results (Code: ${state.seed})\n`;
         sortedPlayers.forEach((p, idx) => {
             text += `${idx + 1}. ${p}: ${state.scores[p]} pts\n`;
         });
