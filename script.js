@@ -449,16 +449,11 @@ function renderGame() {
     nextBtn.innerText = 'Next Question';
     div.appendChild(nextBtn);
 
-    // Logic for next button
-    // When answer submitted, show feedback, THEN show Next button.
-    // Click Next -> submitAnswer -> render
-
     let currentAnswer = null;
 
     const handleAnswer = (answer) => {
         currentAnswer = answer;
 
-        // Disable inputs
         if (question.type === 'who_said_it') {
             card.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
         } else {
@@ -466,7 +461,6 @@ function renderGame() {
             card.querySelector('#slider-input').disabled = true;
         }
 
-        // Show Feedback
         if (state.revealAtEnd) {
              feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
         } else {
@@ -478,7 +472,6 @@ function renderGame() {
                         '<span class="correct">Correct! +1000 pts</span>' :
                         `<span class="incorrect">Wrong! It was ${escapeHTML(question.correctAnswer)}</span>`;
             } else {
-                // Slider
                 const diff = Math.abs(answer - question.correctAnswer);
                 let msg = '';
                 if (diff === 0) {
@@ -495,7 +488,6 @@ function renderGame() {
             }
         }
 
-        // Show Next Button
         nextBtn.classList.remove('hidden');
         nextBtn.onclick = () => {
             submitAnswer(question.id, currentAnswer);
@@ -507,7 +499,6 @@ function renderGame() {
         opts.forEach(btn => {
             btn.onclick = () => {
                 const chosen = btn.dataset.value;
-                // Visual selection state
                 const isCorrect = chosen === question.correctAnswer;
 
                 if (state.revealAtEnd) {
@@ -579,57 +570,85 @@ function renderResults() {
 
     const sortedPlayers = [...state.players].sort((a, b) => state.scores[b] - state.scores[a]);
 
+    // Drum roll button
+    let drumRollHtml = `
+        <button class="btn btn-filled" id="drum-roll-btn" style="padding: 20px; font-size: 1.2rem; margin-bottom: 20px;">
+            🥁 Drum Roll 🥁
+        </button>
+    `;
+
     let html = `
         <h1>Results</h1>
         <div class="subtitle">Quiz Code: ${state.seed}</div>
+        <div style="margin-bottom: 20px; font-weight: bold; color: var(--md-sys-color-primary);">(Higher Score is Better!)</div>
+
+        <div id="drum-container">${drumRollHtml}</div>
+
         <div id="leaderboard" style="width: 100%; max-width: 400px; margin-bottom: 20px;">
+            <!-- filled by animation -->
         </div>
 
-        <button class="btn btn-outlined" id="share-btn">Share Results</button>
-        <button class="btn btn-tonal" id="home-btn" style="margin-top: 10px;">Back to Menu</button>
+        <div id="action-buttons" class="hidden">
+            <button class="btn btn-outlined" id="share-btn">Share Results</button>
+            <button class="btn btn-tonal" id="home-btn" style="margin-top: 10px;">Back to Menu</button>
+        </div>
     `;
 
     div.innerHTML = html;
 
+    const drumBtn = div.querySelector('#drum-roll-btn');
     const leaderboard = div.querySelector('#leaderboard');
+    const actionButtons = div.querySelector('#action-buttons');
     const shareBtn = div.querySelector('#share-btn');
     const homeBtn = div.querySelector('#home-btn');
 
-    let i = sortedPlayers.length - 1;
+    drumBtn.onclick = () => {
+        // Hide button
+        div.querySelector('#drum-container').innerHTML = ''; // or hide
 
-    const revealNext = () => {
-        if (i >= 0) {
-            const p = sortedPlayers[i];
-            const score = state.scores[p];
-            const item = document.createElement('div');
-            item.className = 'leaderboard-item';
-            item.innerHTML = `
-                <span style="font-weight: bold;">${i + 1}. ${escapeHTML(p)}</span>
-                <span>${score} pts</span>
-            `;
-            item.style.opacity = '0';
-            item.style.transform = 'translateY(10px)';
-            item.style.transition = 'all 0.5s';
+        // Start Reveal Logic
+        let i = sortedPlayers.length - 1;
 
-            if (leaderboard.firstChild) {
-                leaderboard.insertBefore(item, leaderboard.firstChild);
+        const revealNext = () => {
+            if (i >= 0) {
+                const p = sortedPlayers[i];
+                const score = state.scores[p];
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                item.innerHTML = `
+                    <span style="font-weight: bold;">${i + 1}. ${escapeHTML(p)}</span>
+                    <span>${score} pts</span>
+                `;
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(10px)';
+                item.style.transition = 'all 0.5s';
+
+                if (leaderboard.firstChild) {
+                    leaderboard.insertBefore(item, leaderboard.firstChild);
+                } else {
+                    leaderboard.appendChild(item);
+                }
+
+                if (navigator.vibrate) navigator.vibrate(200);
+
+                setTimeout(() => {
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateY(0)';
+                }, 50);
+
+                i--;
+                setTimeout(revealNext, 1500);
             } else {
-                leaderboard.appendChild(item);
+                // Done revealing
+                actionButtons.classList.remove('hidden');
+                // Celebrate?
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 400]);
             }
+        };
 
-            if (navigator.vibrate) navigator.vibrate(200);
-
-            setTimeout(() => {
-                item.style.opacity = '1';
-                item.style.transform = 'translateY(0)';
-            }, 50);
-
-            i--;
-            setTimeout(revealNext, 1500);
-        }
+        // Start immediate
+        revealNext();
     };
-
-    setTimeout(revealNext, 500);
 
     shareBtn.onclick = () => {
         let text = `Crackeggs Quiz Results (Code: ${state.seed})\n`;
