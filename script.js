@@ -10,13 +10,15 @@ const state = {
     answers: {}, // { playerName: { questionId: answer } }
     scores: {}, // { playerName: score }
     seed: null,
-    revealAtEnd: false
+    revealAtEnd: false,
+    enableChips: true,
+    playerChips: {} // { playerName: { '5050': true, 'range': true, 'audience': true } }
 };
 
 // Track current view to allow smooth updates
 let lastRenderedView = null;
 
-const STORAGE_KEY = 'crackeggs_quiz_state_v2';
+const STORAGE_KEY = 'crackeggs_quiz_state_v3';
 
 // --- Utilities ---
 
@@ -35,6 +37,15 @@ class Random {
 
     nextFloat() {
         return this.nextInt() / (this.m - 1);
+    }
+
+    // Shuffle in place
+    shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(this.nextFloat() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
     }
 }
 
@@ -172,7 +183,6 @@ function render() {
 
 function renderIntro() {
     const div = document.createElement('div');
-    // Using view-centered for slight offset, but style.css modified it to be top-aligned with more padding
     div.className = 'view view-centered';
     div.innerHTML = `
         <div id="intro-text-container">
@@ -187,34 +197,19 @@ function renderIntro() {
 
     btn.onclick = () => {
         if (btn.innerText === "Click me") {
-            // 1. Measure current height
             const startHeight = container.offsetHeight;
             container.style.height = `${startHeight}px`;
-
-            // 2. Fade out text
             title.style.opacity = 0;
 
             setTimeout(() => {
-                // 3. Swap text
                 title.innerText = "No, you're not egging Olli, that was yesterday silly!";
-
-                // 4. Measure new height
                 container.style.height = 'auto';
                 const newHeight = container.offsetHeight;
-
-                // Set back to start to animate
                 container.style.height = `${startHeight}px`;
-
-                // Force reflow
                 void container.offsetHeight;
-
-                // 5. Animate to new height
                 container.style.height = `${newHeight}px`;
                 title.style.opacity = 1;
-
                 btn.innerText = "Let's Play";
-
-                // Cleanup after transition
                 setTimeout(() => {
                     container.style.height = 'auto';
                 }, 300);
@@ -259,6 +254,12 @@ function renderMenu() {
              <!-- text populated by updateMenu -->
         </div>
 
+        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <input type="checkbox" id="enable-chips" ${state.enableChips ? 'checked' : ''} onchange="setEnableChips(this.checked)" style="transform: scale(1.2);">
+            <label for="enable-chips" style="font-weight: 500;">Enable Chip Mode</label>
+        </div>
+        <div class="info-text">50/50, Range Reducer, Ask Audience</div>
+
         <div style="margin-bottom: 20px; margin-top: 10px;">
              <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
              <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
@@ -287,19 +288,17 @@ function renderMenu() {
 window.setMode = (m) => setState({ mode: m });
 window.setCount = (n) => setState({ questionCount: n });
 window.setReveal = (atEnd) => setState({ revealAtEnd: atEnd });
+window.setEnableChips = (enabled) => setState({ enableChips: enabled });
 
 function updateMenu() {
-    // Mode
     document.getElementById('mode-solo').className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('mode-party').className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('mode-desc').innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
 
-    // Count
     document.getElementById('count-5').className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('count-10').className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('count-20').className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
 
-    // Reveal
     document.getElementById('reveal-immediate').className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('reveal-end').className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('reveal-desc').innerText = state.revealAtEnd ?
@@ -369,8 +368,10 @@ function startGame(players, seed) {
     const selectedQuestions = pool.slice(0, state.questionCount);
 
     const answers = {};
+    const playerChips = {};
     players.forEach(p => {
         answers[p] = {};
+        playerChips[p] = { '5050': true, 'range': true, 'audience': true };
     });
 
     setState({
@@ -380,6 +381,7 @@ function startGame(players, seed) {
         questions: selectedQuestions,
         currentQuestionIndex: 0,
         answers: answers,
+        playerChips: playerChips,
         seed: seed
     });
 }
@@ -387,7 +389,6 @@ function startGame(players, seed) {
 function renderPassScreen() {
     const player = state.players[state.currentPlayerIndex];
     const div = document.createElement('div');
-    // Also use view-centered for Pass screen
     div.className = 'view view-centered';
     div.style.backgroundColor = 'var(--md-sys-color-primary)';
     div.style.color = 'var(--md-sys-color-on-primary)';
@@ -417,6 +418,7 @@ function renderPassScreen() {
 function renderGame() {
     const player = state.players[state.currentPlayerIndex];
     const question = state.questions[state.currentQuestionIndex];
+    const chips = state.playerChips[player];
 
     const div = document.createElement('div');
     div.className = 'view';
@@ -431,6 +433,160 @@ function renderGame() {
         <span>${state.currentQuestionIndex + 1} / ${state.questions.length}</span>
     `;
     div.appendChild(header);
+
+    // Chip buttons
+    if (state.enableChips) {
+        const chipsDiv = document.createElement('div');
+        chipsDiv.className = 'chips-container';
+
+        // 50/50
+        const btn5050 = document.createElement('button');
+        btn5050.className = 'chip-btn';
+        btn5050.innerText = '50/50';
+        btn5050.disabled = !chips['5050'] || question.type !== 'who_said_it';
+
+        // Ask Audience
+        const btnAudience = document.createElement('button');
+        btnAudience.className = 'chip-btn';
+        btnAudience.innerText = 'Ask Audience';
+        btnAudience.disabled = !chips['audience'];
+
+        // Range
+        const btnRange = document.createElement('button');
+        btnRange.className = 'chip-btn';
+        btnRange.innerText = 'Range';
+        btnRange.disabled = !chips['range'] || question.type === 'who_said_it';
+
+        chipsDiv.appendChild(btn5050);
+        chipsDiv.appendChild(btnAudience);
+        chipsDiv.appendChild(btnRange);
+        div.appendChild(chipsDiv);
+
+        // Handlers
+        btn5050.onclick = () => {
+            if (confirm("Use 50/50 Chip?")) {
+                chips['5050'] = false;
+                btn5050.disabled = true;
+
+                // Hide 2 wrong options
+                const opts = Array.from(card.querySelectorAll('.option-btn'));
+                const correct = question.correctAnswer;
+                const wrongOpts = opts.filter(b => b.dataset.value !== correct);
+
+                // Shuffle wrong opts
+                for (let i = wrongOpts.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [wrongOpts[i], wrongOpts[j]] = [wrongOpts[j], wrongOpts[i]];
+                }
+
+                // Hide first 2
+                if (wrongOpts.length >= 2) {
+                    wrongOpts[0].style.visibility = 'hidden';
+                    wrongOpts[1].style.visibility = 'hidden';
+                }
+                saveState();
+            }
+        };
+
+        btnRange.onclick = () => {
+             if (confirm("Use Range Chip?")) {
+                 chips['range'] = false;
+                 btnRange.disabled = true;
+
+                 const slider = card.querySelector('#slider-input');
+                 const currentRange = question.max - question.min;
+                 const newRangeSize = currentRange * 0.2; // 20%
+
+                 const half = newRangeSize / 2;
+                 let newMin = Math.floor(question.correctAnswer - half);
+                 let newMax = Math.ceil(question.correctAnswer + half);
+
+                 // Clamp
+                 if (newMin < question.min) newMin = question.min;
+                 if (newMax > question.max) newMax = question.max;
+
+                 // Update slider
+                 slider.min = newMin;
+                 slider.max = newMax;
+                 slider.value = question.correctAnswer; // Snap to answer? Or center?
+                 // Usually hints don't snap you exactly.
+                 // But range reducer effectively zooms you in.
+                 // Let's set value to start of range or center? Center.
+                 const mid = Math.floor((newMin + newMax) / 2);
+                 slider.value = mid;
+
+                 // Update display
+                 card.querySelector('#slider-val').innerText = question.type === 'when' ? formatDate(mid) : mid;
+
+                 // Feedback
+                 alert("Range reduced! The answer is within the new slider limits.");
+                 saveState();
+             }
+        };
+
+        btnAudience.onclick = () => {
+             if (confirm("Ask the Audience?")) {
+                 chips['audience'] = false;
+                 btnAudience.disabled = true;
+
+                 if (question.type === 'who_said_it') {
+                     // Generate votes
+                     const opts = question.options;
+                     const correct = question.correctAnswer;
+                     let remainingPercent = 100;
+                     let votes = {};
+
+                     // 60% chance audience is right? Or 60% of votes go to right?
+                     // "60% likely they suggest the correct answer".
+                     // This means 60% chance correct gets majority.
+                     // Let's implement: 60% chance correct gets 50-80%. 40% chance it gets 10-40%.
+                     const isSmart = Math.random() < 0.6;
+                     const correctShare = isSmart ? (50 + Math.random() * 30) : (Math.random() * 40);
+
+                     votes[correct] = correctShare;
+                     remainingPercent -= correctShare;
+
+                     const others = opts.filter(o => o !== correct);
+                     others.forEach((o, idx) => {
+                         if (idx === others.length - 1) {
+                             votes[o] = remainingPercent;
+                         } else {
+                             const share = Math.random() * remainingPercent;
+                             votes[o] = share;
+                             remainingPercent -= share;
+                         }
+                     });
+
+                     // Show chart
+                     let msg = "Audience Vote:\n";
+                     opts.forEach(o => {
+                         msg += `${o}: ${Math.round(votes[o])}%\n`;
+                     });
+                     alert(msg);
+
+                 } else {
+                     // Slider
+                     // "Audience thinks the answer is..."
+                     // 60% chance they are close.
+                     const isSmart = Math.random() < 0.6;
+                     let guess;
+                     if (isSmart) {
+                         // Within 10% range
+                         const range = question.max - question.min;
+                         const offset = (Math.random() - 0.5) * (range * 0.1);
+                         guess = question.correctAnswer + offset;
+                     } else {
+                         // Random within range
+                         guess = question.min + Math.random() * (question.max - question.min);
+                     }
+                     guess = Math.round(guess);
+                     const val = question.type === 'when' ? formatDate(guess) : guess;
+                     alert(`The audience thinks the answer is around: ${val}`);
+                 }
+                 saveState();
+             }
+        };
+    }
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -488,6 +644,11 @@ function renderGame() {
         } else {
             card.querySelector('#submit-slider').disabled = true;
             card.querySelector('#slider-input').disabled = true;
+        }
+
+        // Disable remaining chips
+        if (state.enableChips) {
+            Array.from(div.querySelectorAll('.chip-btn')).forEach(b => b.disabled = true);
         }
 
         if (state.revealAtEnd) {
@@ -624,6 +785,7 @@ function renderResults() {
 
     div.innerHTML = html;
 
+    const drumContainer = div.querySelector('#drum-container');
     const drumBtn = div.querySelector('#drum-roll-btn');
     const leaderboard = div.querySelector('#leaderboard');
     const actionButtons = div.querySelector('#action-buttons');
@@ -631,46 +793,57 @@ function renderResults() {
     const homeBtn = div.querySelector('#home-btn');
 
     drumBtn.onclick = () => {
-        div.querySelector('#drum-container').innerHTML = '';
+        drumContainer.innerHTML = '';
 
-        let i = sortedPlayers.length - 1;
+        // Create full screen overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'drum-overlay';
+        overlay.innerHTML = '<div class="drum-anim">🥁</div>';
+        document.body.appendChild(overlay);
 
-        const revealNext = () => {
-            if (i >= 0) {
-                const p = sortedPlayers[i];
-                const score = state.scores[p];
-                const item = document.createElement('div');
-                item.className = 'leaderboard-item';
-                item.innerHTML = `
-                    <span style="font-weight: bold;">${i + 1}. ${escapeHTML(p)}</span>
-                    <span>${score} pts</span>
-                `;
-                item.style.opacity = '0';
-                item.style.transform = 'translateY(10px)';
-                item.style.transition = 'all 0.5s';
+        setTimeout(() => {
+            document.body.removeChild(overlay);
 
-                if (leaderboard.firstChild) {
-                    leaderboard.insertBefore(item, leaderboard.firstChild);
+            // Start reveal
+            let i = sortedPlayers.length - 1;
+
+            const revealNext = () => {
+                if (i >= 0) {
+                    const p = sortedPlayers[i];
+                    const score = state.scores[p];
+                    const item = document.createElement('div');
+                    item.className = 'leaderboard-item';
+                    item.innerHTML = `
+                        <span style="font-weight: bold;">${i + 1}. ${escapeHTML(p)}</span>
+                        <span>${score} pts</span>
+                    `;
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateY(10px)';
+                    item.style.transition = 'all 0.5s';
+
+                    if (leaderboard.firstChild) {
+                        leaderboard.insertBefore(item, leaderboard.firstChild);
+                    } else {
+                        leaderboard.appendChild(item);
+                    }
+
+                    if (navigator.vibrate) navigator.vibrate(200);
+
+                    setTimeout(() => {
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateY(0)';
+                    }, 50);
+
+                    i--;
+                    setTimeout(revealNext, 1500);
                 } else {
-                    leaderboard.appendChild(item);
+                    actionButtons.classList.remove('hidden');
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 400]);
                 }
+            };
 
-                if (navigator.vibrate) navigator.vibrate(200);
-
-                setTimeout(() => {
-                    item.style.opacity = '1';
-                    item.style.transform = 'translateY(0)';
-                }, 50);
-
-                i--;
-                setTimeout(revealNext, 1500);
-            } else {
-                actionButtons.classList.remove('hidden');
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 400]);
-            }
-        };
-
-        revealNext();
+            revealNext();
+        }, 3000); // 3 seconds drum roll
     };
 
     shareBtn.onclick = () => {
