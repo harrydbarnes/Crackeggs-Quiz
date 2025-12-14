@@ -349,7 +349,7 @@ function renderMenu() {
         <h1>Crackeggs Quiz</h1>
 
         <div class="subtitle">Select Game Mode</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 4px;">
             <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
             <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
         </div>
@@ -357,15 +357,15 @@ function renderMenu() {
             <!-- text populated by updateMenu -->
         </div>
 
-        <div class="subtitle" style="margin-top: 20px;">Number of Questions</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div class="subtitle" style="margin-top: 12px;">Number of Questions</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 4px;">
             <button class="btn" id="count-5" onclick="setCount(5)">5</button>
             <button class="btn" id="count-10" onclick="setCount(10)">10</button>
             <button class="btn" id="count-20" onclick="setCount(20)">20</button>
         </div>
 
-        <div class="subtitle" style="margin-top: 20px;">Reveal Answers</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div class="subtitle" style="margin-top: 12px;">Reveal Answers</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 4px;">
              <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
              <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
         </div>
@@ -373,19 +373,19 @@ function renderMenu() {
              <!-- text populated by updateMenu -->
         </div>
 
-        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <div style="margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 10px;">
             <input type="checkbox" id="enable-chips" ${state.enableChips ? 'checked' : ''} onchange="setEnableChips(this.checked)" style="transform: scale(1.2);">
             <label for="enable-chips" style="font-weight: 500;">Enable Chip Mode</label>
         </div>
         <div class="info-text">50/50, Range Reducer, Ask Audience</div>
 
-        <div style="margin-bottom: 20px; margin-top: 10px;">
-             <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
+        <div style="margin-bottom: 12px; margin-top: 12px;">
+             <label style="display:block; margin-bottom: 4px; font-weight:500;">Quiz Code (Optional)</label>
              <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
-             <input type="number" id="seed-input" placeholder="Random" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
+             <input type="number" id="seed-input" placeholder="Random" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
         </div>
 
-        <button class="btn btn-filled" style="width: 200px; margin-top: 20px;" id="start-btn">Start Game</button>
+        <button class="btn btn-filled" style="width: 200px; margin-top: 8px;" id="start-btn">Start Game</button>
     `;
 
     div.querySelector('#start-btn').onclick = () => {
