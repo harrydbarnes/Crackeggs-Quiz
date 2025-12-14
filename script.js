@@ -75,10 +75,10 @@ function showModal(title, content, actions = []) {
         const mActions = document.getElementById('modal-actions');
 
         if (title) {
-             mTitle.innerText = title;
-             mTitle.style.display = 'block';
+            mTitle.innerText = title;
+            mTitle.style.display = 'block';
         } else {
-             mTitle.style.display = 'none';
+            mTitle.style.display = 'none';
         }
 
         mContent.innerText = content || '';
