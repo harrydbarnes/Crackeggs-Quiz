@@ -10,9 +10,10 @@ const state = {
     answers: {}, // { playerName: { questionId: answer } }
     scores: {}, // { playerName: score }
     seed: null,
+    revealAtEnd: false // New state
 };
 
-const STORAGE_KEY = 'crackeggs_quiz_state_v1';
+const STORAGE_KEY = 'crackeggs_quiz_state_v2'; // Bump version
 
 // --- Utilities ---
 
@@ -86,9 +87,36 @@ function setState(newState) {
     render();
 }
 
+function resetGame() {
+    if (confirm("Are you sure you want to quit to the main menu?")) {
+        setState({ view: 'menu' });
+    }
+}
+
 function render() {
     const app = document.getElementById('app');
+
+    // Fade out old content? (Simple replacement for now, CSS handles entry animation)
     app.innerHTML = '';
+
+    // Global Elements (Top Bar)
+    if (state.view !== 'intro') {
+        const topBar = document.createElement('div');
+        topBar.className = 'top-bar';
+        topBar.innerHTML = `
+            <button class="icon-btn material-symbols-outlined" id="back-btn">arrow_back</button>
+        `;
+        topBar.querySelector('#back-btn').onclick = () => {
+            if (state.view === 'menu') {
+                setState({ view: 'intro' });
+            } else if (state.view === 'results') {
+                setState({ view: 'menu' });
+            } else {
+                resetGame();
+            }
+        };
+        app.appendChild(topBar);
+    }
 
     switch (state.view) {
         case 'intro':
@@ -116,7 +144,7 @@ function render() {
 
 function renderIntro() {
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view view-centered'; // Intro centered
     div.innerHTML = `
         <h1 id="intro-title">Ready to crack eggs?</h1>
         <button class="btn btn-filled" id="intro-btn">Click me</button>
@@ -127,10 +155,16 @@ function renderIntro() {
 
     btn.onclick = () => {
         if (btn.innerText === "Click me") {
-            title.innerText = "No, you're not egging Olli, that was yesterday silly!";
-            btn.innerText = "Let's Play";
+            // Animate text change
+            title.style.opacity = 0;
+            setTimeout(() => {
+                title.innerText = "No, you're not egging Olli, that was yesterday silly!";
+                title.style.opacity = 1;
+                btn.innerText = "Let's Play";
+            }, 300);
         } else {
-            setState({ view: 'menu' });
+            div.classList.add('fade-out');
+            setTimeout(() => setState({ view: 'menu' }), 300);
         }
     };
 
@@ -142,9 +176,9 @@ function renderMenu() {
     div.className = 'view';
     div.innerHTML = `
         <h1>Crackeggs Quiz</h1>
-        <div class="subtitle">Select Game Mode</div>
 
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div class="subtitle">Select Game Mode</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
             <button class="btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}" id="mode-solo">
                 Solo Run
             </button>
@@ -152,20 +186,30 @@ function renderMenu() {
                 Party Mode
             </button>
         </div>
+        <div class="info-text">
+            ${state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.'}
+        </div>
 
-        <div class="subtitle">Number of Questions</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 40px;">
+        <div class="subtitle" style="margin-top: 20px;">Number of Questions</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <button class="btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}" onclick="setCount(5)">5</button>
             <button class="btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}" onclick="setCount(10)">10</button>
             <button class="btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}" onclick="setCount(20)">20</button>
         </div>
 
-        <div style="margin-bottom: 20px;">
-             <label style="display:block; margin-bottom: 5px;">Game Seed (Optional)</label>
-             <input type="number" id="seed-input" placeholder="Random" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 100px; text-align: center;">
+        <div class="subtitle" style="margin-top: 20px;">Reveal Answers</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+             <button class="btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}" onclick="setReveal(false)">Immediately</button>
+             <button class="btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}" onclick="setReveal(true)">At End</button>
         </div>
 
-        <button class="btn btn-filled" style="width: 200px;" id="start-btn">Start Game</button>
+        <div style="margin-bottom: 20px;">
+             <label style="display:block; margin-bottom: 5px; font-weight:500;">Game Seed (Optional)</label>
+             <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
+             <input type="number" id="seed-input" placeholder="Random" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
+        </div>
+
+        <button class="btn btn-filled" style="width: 200px; margin-top: 20px;" id="start-btn">Start Game</button>
     `;
 
     div.querySelector('#mode-solo').onclick = () => setState({ mode: 'solo' });
@@ -189,12 +233,16 @@ window.setCount = (n) => {
     setState({ questionCount: n });
 };
 
+window.setReveal = (atEnd) => {
+    setState({ revealAtEnd: atEnd });
+};
+
 function renderSetup() {
     const div = document.createElement('div');
     div.className = 'view';
     div.innerHTML = `
         <h2>Who is playing?</h2>
-        <div class="subtitle">Enter player names</div>
+        <div class="subtitle">Enter player names in order. Pass the phone when prompted.</div>
         <div id="players-list" style="width: 100%; margin-bottom: 20px;">
         </div>
         <button class="btn btn-outlined" id="add-player" style="margin-bottom: 20px;">+ Add Player</button>
@@ -268,14 +316,26 @@ function startGame(players, seed) {
 function renderPassScreen() {
     const player = state.players[state.currentPlayerIndex];
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view view-centered';
     div.style.backgroundColor = 'var(--md-sys-color-primary)';
     div.style.color = 'var(--md-sys-color-on-primary)';
 
+    // Make sure we are not asking Player 1 to pass to Player 1 at start of Solo (although mode handles that)
+    // For party mode, if index is 0, just say "Start: [Player 1]"?
+    // "The phone is passed around. The screen indicates: 'Pass to [Name]'."
+
+    let titleText = "Pass the phone to";
+    if (state.currentPlayerIndex === 0) {
+        titleText = "Get ready";
+    }
+
     div.innerHTML = `
         <span class="material-symbols-outlined" style="font-size: 64px; margin-bottom: 20px;">smartphone</span>
-        <h2>Pass the phone to</h2>
+        <h2>${titleText}</h2>
         <h1>${escapeHTML(player)}</h1>
+        <div style="margin-top: 20px;">
+             ${state.currentPlayerIndex > 0 ? '(Don\'t peek!)' : ''}
+        </div>
         <button class="btn" style="background: white; color: var(--md-sys-color-primary); margin-top: 40px;" id="ready-btn">I am Ready</button>
     `;
 
@@ -292,8 +352,6 @@ function renderGame() {
 
     const div = document.createElement('div');
     div.className = 'view';
-    div.style.justifyContent = 'flex-start';
-    div.style.paddingTop = '40px';
 
     const header = document.createElement('div');
     header.style.width = '100%';
@@ -322,7 +380,6 @@ function renderGame() {
     } else if (question.type === 'count' || question.type === 'when') {
         const min = question.min || 0;
         const max = question.max || 100;
-        const step = 1;
         const startVal = Math.floor((min + max) / 2);
 
         content += `
@@ -330,9 +387,6 @@ function renderGame() {
                 <input type="range" min="${min}" max="${max}" value="${startVal}" class="slider" id="slider-input">
                 <div style="text-align: center; font-size: 1.5rem; font-weight: bold; margin-top: 10px;" id="slider-val">
                     ${question.type === 'when' ? formatDate(startVal) : startVal}
-                </div>
-                <div style="text-align: center; color: var(--md-sys-color-secondary); font-size: 0.9rem; margin-top: 5px;">
-                    (Exact is best!)
                 </div>
             </div>
             <button class="btn btn-filled" id="submit-slider" style="width: 100%; margin-top: 20px;">Submit</button>
@@ -357,20 +411,26 @@ function renderGame() {
                 const chosen = btn.dataset.value;
                 const isCorrect = chosen === question.correctAnswer;
 
-                btn.classList.add(isCorrect ? 'btn-filled' : 'btn-tonal');
-                if (!isCorrect) {
-                    btn.style.backgroundColor = '#ffcdd2';
-                    btn.style.borderColor = 'red';
+                if (state.revealAtEnd) {
+                    btn.classList.add('btn-filled'); // Just highlight selection
+                    feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
+                    setTimeout(() => submitAnswer(question.id, chosen), 800);
                 } else {
-                    btn.style.backgroundColor = '#c8e6c9';
-                    btn.style.borderColor = 'green';
+                    btn.classList.add(isCorrect ? 'btn-filled' : 'btn-tonal');
+                    if (!isCorrect) {
+                        btn.style.backgroundColor = '#ffcdd2';
+                        btn.style.borderColor = 'red';
+                    } else {
+                        btn.style.backgroundColor = '#c8e6c9';
+                        btn.style.borderColor = 'green';
+                    }
+
+                    feedback.innerHTML = isCorrect ?
+                        '<span class="correct">Correct!</span>' :
+                        `<span class="incorrect">Wrong! It was ${escapeHTML(question.correctAnswer)}</span>`;
+
+                    setTimeout(() => submitAnswer(question.id, chosen), 1500);
                 }
-
-                feedback.innerHTML = isCorrect ?
-                    '<span class="correct">Correct!</span>' :
-                    `<span class="incorrect">Wrong! It was ${escapeHTML(question.correctAnswer)}</span>`;
-
-                setTimeout(() => submitAnswer(question.id, chosen), 1500);
             };
         });
     } else {
@@ -387,14 +447,18 @@ function renderGame() {
             slider.disabled = true;
             const val = parseInt(slider.value);
 
-            const diff = Math.abs(val - question.correctAnswer);
-            let msg = '';
-            if (diff === 0) msg = '<span class="correct">Exact Match!</span>';
-            else msg = `<span>The answer was ${question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer}</span>`;
+            if (state.revealAtEnd) {
+                feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
+                setTimeout(() => submitAnswer(question.id, val), 800);
+            } else {
+                const diff = Math.abs(val - question.correctAnswer);
+                let msg = '';
+                if (diff === 0) msg = '<span class="correct">Exact Match!</span>';
+                else msg = `<span>The answer was ${question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer}</span>`;
 
-            feedback.innerHTML = msg;
-
-            setTimeout(() => submitAnswer(question.id, val), 1500);
+                feedback.innerHTML = msg;
+                setTimeout(() => submitAnswer(question.id, val), 1500);
+            }
         };
     }
 
