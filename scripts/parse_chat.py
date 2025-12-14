@@ -67,9 +67,10 @@ def generate_questions(messages):
     senders = list(set(m['sender'] for m in messages))
 
     # 1. Who said it?
+    # Increased to 100 questions
     candidates = [m for m in messages if len(m['text']) > 20 and 'http' not in m['text']]
 
-    for _ in range(40):
+    for _ in range(100):
         if not candidates: break
         msg = random.choice(candidates)
         candidates.remove(msg)
@@ -91,9 +92,10 @@ def generate_questions(messages):
         })
 
     # 2. When did this happen?
+    # Increased to 60 questions
     date_candidates = [m for m in valid_messages if len(m['text']) > 30 and 'http' not in m['text']]
 
-    for _ in range(20):
+    for _ in range(60):
         if not date_candidates: break
         msg = random.choice(date_candidates)
         date_candidates.remove(msg) # unique questions
@@ -110,11 +112,12 @@ def generate_questions(messages):
     # 3. Counts
     all_text = " ".join([m['text'].lower() for m in messages])
     words = re.findall(r'\b\w+\b', all_text)
-    stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'to', 'of', 'in', 'on', 'at', 'for', 'with', 'it', 'that', 'this', 'i', 'you', 'he', 'she', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their', 'be', 'have', 'do', 'say', 'get', 'make', 'go', 'know', 'take', 'see', 'come', 'think', 'look', 'want', 'give', 'use', 'find', 'tell', 'ask', 'work', 'seem', 'feel', 'try', 'leave', 'call', 'media', 'omitted', 'message', 'deleted', 'pm', 'am'}
+    stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'to', 'of', 'in', 'on', 'at', 'for', 'with', 'it', 'that', 'this', 'i', 'you', 'he', 'she', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their', 'be', 'have', 'do', 'say', 'get', 'make', 'go', 'know', 'take', 'see', 'come', 'think', 'look', 'want', 'give', 'use', 'find', 'tell', 'ask', 'work', 'seem', 'feel', 'try', 'leave', 'call', 'media', 'omitted', 'message', 'deleted', 'pm', 'am', 'can', 'so', 'if', 'as', 'up', 'out', 'one', 'no', 'not', 'all', 'by'}
     filtered_words = [w for w in words if w not in stopwords and len(w) > 3]
     word_counts = Counter(filtered_words)
 
-    for word, count in word_counts.most_common(15):
+    # Increased to 40 most common words
+    for word, count in word_counts.most_common(40):
         if count < 5: continue
         questions.append({
             'type': 'count',
