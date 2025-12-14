@@ -116,6 +116,7 @@ function showModal(title, content, actions = []) {
 
 function triggerConfetti() {
     const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+    const fragment = document.createDocumentFragment();
 
     for (let i = 0; i < 100; i++) {
         const confetti = document.createElement('div');
@@ -124,12 +125,13 @@ function triggerConfetti() {
         confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
         confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
         confetti.style.opacity = Math.random();
-        document.body.appendChild(confetti);
+        fragment.appendChild(confetti);
 
         setTimeout(() => {
             if (document.body.contains(confetti)) document.body.removeChild(confetti);
         }, 5000);
     }
+    document.body.appendChild(fragment);
 }
 
 
