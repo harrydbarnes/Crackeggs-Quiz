@@ -67,10 +67,10 @@ def generate_questions(messages):
     senders = list(set(m['sender'] for m in messages))
 
     # 1. Who said it?
-    # Increased to 100 questions
+    # Increased to 200 questions
     candidates = [m for m in messages if len(m['text']) > 20 and 'http' not in m['text']]
 
-    for _ in range(100):
+    for _ in range(200):
         if not candidates: break
         msg = random.choice(candidates)
         candidates.remove(msg)
@@ -92,10 +92,10 @@ def generate_questions(messages):
         })
 
     # 2. When did this happen?
-    # Increased to 60 questions
+    # Increased to 120 questions
     date_candidates = [m for m in valid_messages if len(m['text']) > 30 and 'http' not in m['text']]
 
-    for _ in range(60):
+    for _ in range(120):
         if not date_candidates: break
         msg = random.choice(date_candidates)
         date_candidates.remove(msg) # unique questions
@@ -116,8 +116,8 @@ def generate_questions(messages):
     filtered_words = [w for w in words if w not in stopwords and len(w) > 3]
     word_counts = Counter(filtered_words)
 
-    # Increased to 40 most common words
-    for word, count in word_counts.most_common(40):
+    # Increased to 80 most common words
+    for word, count in word_counts.most_common(80):
         if count < 5: continue
         questions.append({
             'type': 'count',
