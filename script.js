@@ -426,10 +426,16 @@ function renderMenu() {
             <label for="filter-year" style="font-weight: 500;">Limit Year Range</label>
         </div>
 
-        <div id="year-range-container" style="display: none; gap: 10px; justify-content: center; margin-top: 10px; align-items: center;">
-            <input type="number" id="start-year" value="${state.startYear}" min="${state.minDbYear}" max="${state.maxDbYear}" style="width: 70px; padding: 8px; border-radius: 8px; border: 1px solid #ccc; text-align: center;">
-            <span>to</span>
-            <input type="number" id="end-year" value="${state.endYear}" min="${state.minDbYear}" max="${state.maxDbYear}" style="width: 70px; padding: 8px; border-radius: 8px; border: 1px solid #ccc; text-align: center;">
+        <div id="year-range-container" style="display: none; flex-direction: column; align-items: center; margin-top: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem; color: var(--md-sys-color-primary);" id="year-display">
+                ${state.startYear} - ${state.endYear}
+            </div>
+            <div class="slider-wrapper">
+                <div class="slider-track-bg"></div>
+                <div class="slider-track-fill" id="slider-track"></div>
+                <input type="range" id="range-min" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.startYear}" step="1">
+                <input type="range" id="range-max" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.endYear}" step="1">
+            </div>
         </div>
         <div id="year-info" class="info-text" style="display:none; margin-bottom: 10px;">Excludes 'Count' questions.</div>
 
@@ -459,26 +465,53 @@ function renderMenu() {
         state.seed = parseInt(e.target.value) || null;
     };
 
-    // Handle Year Inputs
-    const startY = div.querySelector('#start-year');
-    const endY = div.querySelector('#end-year');
+    // Handle Year Inputs (Slider)
+    const rangeMin = div.querySelector('#range-min');
+    const rangeMax = div.querySelector('#range-max');
+    const track = div.querySelector('#slider-track');
+    const display = div.querySelector('#year-display');
 
-    startY.onchange = (e) => {
-        let val = parseInt(e.target.value);
-        if (isNaN(val)) val = state.minDbYear;
-        if (val < state.minDbYear) val = state.minDbYear;
-        if (val > state.endYear) val = state.endYear;
-        state.startYear = val;
-        e.target.value = val;
+    const updateSlider = () => {
+        let minVal = parseInt(rangeMin.value);
+        let maxVal = parseInt(rangeMax.value);
+
+        state.startYear = minVal;
+        state.endYear = maxVal;
+
+        display.innerText = `${state.startYear} - ${state.endYear}`;
+
+        const total = state.maxDbYear - state.minDbYear;
+        const safeTotal = total === 0 ? 1 : total;
+        const minPercent = ((state.startYear - state.minDbYear) / safeTotal) * 100;
+        const maxPercent = ((state.endYear - state.minDbYear) / safeTotal) * 100;
+
+        track.style.left = `${minPercent}%`;
+        track.style.width = `${maxPercent - minPercent}%`;
     };
-    endY.onchange = (e) => {
-        let val = parseInt(e.target.value);
-        if (isNaN(val)) val = state.maxDbYear;
-        if (val > state.maxDbYear) val = state.maxDbYear;
-        if (val < state.startYear) val = state.startYear;
-        state.endYear = val;
-        e.target.value = val;
-    };
+
+    if (rangeMin && rangeMax) {
+        rangeMin.oninput = () => {
+            let minVal = parseInt(rangeMin.value);
+            let maxVal = parseInt(rangeMax.value);
+            if (minVal > maxVal) {
+                rangeMin.value = maxVal;
+                minVal = maxVal;
+            }
+            updateSlider();
+        };
+
+        rangeMax.oninput = () => {
+            let minVal = parseInt(rangeMin.value);
+            let maxVal = parseInt(rangeMax.value);
+            if (maxVal < minVal) {
+                rangeMax.value = minVal;
+                maxVal = minVal;
+            }
+            updateSlider();
+        };
+
+        setTimeout(updateSlider, 0);
+    }
 
     div.querySelector('#share-code-btn').onclick = () => {
         const code = seedIn.value || 'Random';
