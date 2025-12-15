@@ -193,6 +193,14 @@ function formatDate(timestamp) {
     return d.toLocaleDateString();
 }
 
+function updateYearInfoVisibility() {
+    const yearInfo = document.getElementById('year-info');
+    if (yearInfo) {
+        const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
+        yearInfo.style.display = isFullRange ? 'none' : 'block';
+    }
+}
+
 // --- Persistence ---
 
 function saveState() {
@@ -238,7 +246,7 @@ function init() {
     // Check URL for code
     const params = new URLSearchParams(window.location.search);
     if (params.has('code')) {
-        const code = parseInt(params.get('code'));
+        const code = parseInt(params.get('code'), 10);
         if (!isNaN(code)) {
             setState({ seed: code, view: 'menu' });
         }
@@ -459,7 +467,8 @@ function renderMenu() {
     // Handle Seed Input
     const seedIn = div.querySelector('#seed-input');
     seedIn.oninput = (e) => {
-        state.seed = parseInt(e.target.value) || null;
+        const val = parseInt(e.target.value, 10);
+        state.seed = isNaN(val) ? null : val;
     };
 
     // Handle Year Inputs (Slider)
@@ -469,8 +478,8 @@ function renderMenu() {
     const display = div.querySelector('#year-display');
 
     const updateSlider = () => {
-        let minVal = parseInt(rangeMin.value);
-        let maxVal = parseInt(rangeMax.value);
+        let minVal = parseInt(rangeMin.value, 10);
+        let maxVal = parseInt(rangeMax.value, 10);
 
         state.startYear = minVal;
         state.endYear = maxVal;
@@ -485,17 +494,13 @@ function renderMenu() {
         track.style.left = `${minPercent}%`;
         track.style.width = `${maxPercent - minPercent}%`;
 
-        const yearInfo = document.getElementById('year-info');
-        if (yearInfo) {
-            const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
-            yearInfo.style.display = isFullRange ? 'none' : 'block';
-        }
+        updateYearInfoVisibility();
     };
 
     if (rangeMin && rangeMax) {
         rangeMin.oninput = () => {
-            let minVal = parseInt(rangeMin.value);
-            let maxVal = parseInt(rangeMax.value);
+            let minVal = parseInt(rangeMin.value, 10);
+            let maxVal = parseInt(rangeMax.value, 10);
             if (minVal > maxVal) {
                 rangeMin.value = maxVal;
                 minVal = maxVal;
@@ -504,8 +509,8 @@ function renderMenu() {
         };
 
         rangeMax.oninput = () => {
-            let minVal = parseInt(rangeMin.value);
-            let maxVal = parseInt(rangeMax.value);
+            let minVal = parseInt(rangeMin.value, 10);
+            let maxVal = parseInt(rangeMax.value, 10);
             if (maxVal < minVal) {
                 rangeMax.value = minVal;
                 maxVal = minVal;
@@ -533,7 +538,7 @@ function renderMenu() {
 
     div.querySelector('#start-btn').onclick = () => {
         const seedInput = div.querySelector('#seed-input').value;
-        const seed = seedInput ? parseInt(seedInput) : Math.floor(Math.random() * 9000) + 1000;
+        const seed = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 9000) + 1000;
 
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
@@ -579,12 +584,7 @@ function updateMenu() {
         btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
     }
 
-    // Year info visibility
-    const yearInfo = document.getElementById('year-info');
-    if (yearInfo) {
-        const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
-        yearInfo.style.display = isFullRange ? 'none' : 'block';
-    }
+    updateYearInfoVisibility();
 }
 
 
@@ -1048,11 +1048,11 @@ function renderGame() {
         const subBtn = card.querySelector('#submit-slider');
 
         slider.oninput = () => {
-            valDisplay.innerText = question.type === 'when' ? formatDate(parseInt(slider.value)) : slider.value;
+            valDisplay.innerText = question.type === 'when' ? formatDate(parseInt(slider.value, 10)) : slider.value;
         };
 
         subBtn.onclick = () => {
-            handleAnswer(parseInt(slider.value));
+            handleAnswer(parseInt(slider.value, 10));
         };
     }
 
