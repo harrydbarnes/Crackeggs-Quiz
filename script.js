@@ -13,7 +13,12 @@ const state = {
     revealAtEnd: false,
     enableChips: true,
     playerChips: {}, // { playerName: { '5050': true, 'range': true, 'audience': true, 'context': true } }
-    soloName: 'Player 1'
+    soloName: 'Player 1',
+    filterYear: false,
+    startYear: 2020,
+    endYear: 2024,
+    minDbYear: 2000,
+    maxDbYear: 2030
 };
 
 // Sounds
@@ -214,6 +219,20 @@ function loadState() {
 
 function init() {
     createUIContainers();
+
+    // Determine DB Year Range
+    const years = window.QUESTION_DATABASE
+        .map(q => q.year)
+        .filter(y => y !== null && y !== undefined);
+
+    if (years.length > 0) {
+        state.minDbYear = Math.min(...years);
+        state.maxDbYear = Math.max(...years);
+        // Set defaults if not loaded from state (loadState will override if exists, but we want valid bounds)
+        state.startYear = state.minDbYear;
+        state.endYear = state.maxDbYear;
+    }
+
     loadState();
 
     // Check URL for code
@@ -402,6 +421,18 @@ function renderMenu() {
         </div>
         <div class="info-text">50/50, Range Reducer, Ask Audience</div>
 
+        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <input type="checkbox" id="filter-year" ${state.filterYear ? 'checked' : ''} onchange="setFilterYear(this.checked)" style="transform: scale(1.2);">
+            <label for="filter-year" style="font-weight: 500;">Limit Year Range</label>
+        </div>
+
+        <div id="year-range-container" style="display: none; gap: 10px; justify-content: center; margin-top: 10px; align-items: center;">
+            <input type="number" id="start-year" value="${state.startYear}" min="${state.minDbYear}" max="${state.maxDbYear}" style="width: 70px; padding: 8px; border-radius: 8px; border: 1px solid #ccc; text-align: center;">
+            <span>to</span>
+            <input type="number" id="end-year" value="${state.endYear}" min="${state.minDbYear}" max="${state.maxDbYear}" style="width: 70px; padding: 8px; border-radius: 8px; border: 1px solid #ccc; text-align: center;">
+        </div>
+        <div id="year-info" class="info-text" style="display:none; margin-bottom: 10px;">Excludes 'Count' questions.</div>
+
         <div style="margin-bottom: 20px; margin-top: 10px;">
              <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
              <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
@@ -426,6 +457,27 @@ function renderMenu() {
     const seedIn = div.querySelector('#seed-input');
     seedIn.oninput = (e) => {
         state.seed = parseInt(e.target.value) || null;
+    };
+
+    // Handle Year Inputs
+    const startY = div.querySelector('#start-year');
+    const endY = div.querySelector('#end-year');
+
+    startY.onchange = (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val)) val = state.minDbYear;
+        if (val < state.minDbYear) val = state.minDbYear;
+        if (val > state.endYear) val = state.endYear;
+        state.startYear = val;
+        e.target.value = val;
+    };
+    endY.onchange = (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val)) val = state.maxDbYear;
+        if (val > state.maxDbYear) val = state.maxDbYear;
+        if (val < state.startYear) val = state.startYear;
+        state.endYear = val;
+        e.target.value = val;
     };
 
     div.querySelector('#share-code-btn').onclick = () => {
@@ -463,6 +515,7 @@ window.setMode = (m) => setState({ mode: m });
 window.setCount = (n) => setState({ questionCount: n });
 window.setReveal = (atEnd) => setState({ revealAtEnd: atEnd });
 window.setEnableChips = (enabled) => setState({ enableChips: enabled });
+window.setFilterYear = (enabled) => setState({ filterYear: enabled });
 
 function updateMenu() {
     document.getElementById('mode-solo').className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
@@ -481,6 +534,13 @@ function updateMenu() {
     document.getElementById('reveal-desc').innerText = state.revealAtEnd ?
         'Correct answers hidden until the very end. Perfect for competitive party play!' :
         'See the correct answer and points immediately after every question.';
+
+    const yearContainer = document.getElementById('year-range-container');
+    const yearInfo = document.getElementById('year-info');
+    if (yearContainer) {
+        yearContainer.style.display = state.filterYear ? 'flex' : 'none';
+        yearInfo.style.display = state.filterYear ? 'block' : 'none';
+    }
 }
 
 
@@ -536,6 +596,22 @@ function renderSetup() {
 function startGame(players, seed) {
     const rng = new Random(seed);
     let pool = [...window.QUESTION_DATABASE];
+
+    if (state.filterYear) {
+         pool = pool.filter(q => {
+             // Exclude if no year (e.g. Count) or outside range
+             return q.year && q.year >= state.startYear && q.year <= state.endYear;
+         });
+
+         if (pool.length === 0) {
+             showToast("No questions found for this year range!");
+             return;
+         }
+
+         if (pool.length < state.questionCount) {
+             showToast(`Only ${pool.length} questions available for this range!`);
+         }
+    }
 
     for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(rng.nextFloat() * (i + 1));

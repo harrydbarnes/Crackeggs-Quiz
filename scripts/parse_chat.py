@@ -108,7 +108,8 @@ def generate_questions(messages):
             'correctAnswer': correct_sender,
             'id': f'who_{random.randint(10000, 99999)}',
             'context': get_context(messages, msg['index']),
-            'dateDisplay': msg.get('date_str', 'Unknown Date')
+            'dateDisplay': msg.get('date_str', 'Unknown Date'),
+            'year': msg['date'].year if msg['date'] else None
         })
 
     # 2. When did this happen?
@@ -127,7 +128,8 @@ def generate_questions(messages):
             'min': min_time,
             'max': max_time,
             'id': f'when_{random.randint(10000, 99999)}',
-            'context': get_context(messages, msg['index'])
+            'context': get_context(messages, msg['index']),
+            'year': msg['date'].year if msg['date'] else None
         })
 
     # 3. Counts
