@@ -12,7 +12,14 @@ const state = {
     seed: null,
     revealAtEnd: false,
     enableChips: true,
-    playerChips: {} // { playerName: { '5050': true, 'range': true, 'audience': true } }
+    playerChips: {}, // { playerName: { '5050': true, 'range': true, 'audience': true, 'context': true } }
+    soloName: 'Player 1'
+};
+
+// Sounds
+const sounds = {
+    drum: new Audio('https://actions.google.com/sounds/v1/cartoon/drum_roll.ogg'),
+    confetti: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg')
 };
 
 // Track current view to allow smooth updates
@@ -115,6 +122,8 @@ function showModal(title, content, actions = []) {
 }
 
 function triggerConfetti() {
+    sounds.confetti.currentTime = 0;
+    sounds.confetti.play().catch(e => console.warn('Confetti sound failed', e));
     const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
 
     for (let i = 0; i < 100; i++) {
@@ -206,6 +215,16 @@ function loadState() {
 function init() {
     createUIContainers();
     loadState();
+
+    // Check URL for code
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code')) {
+        const code = parseInt(params.get('code'));
+        if (!isNaN(code)) {
+            setState({ seed: code, view: 'menu' });
+        }
+    }
+
     render();
 }
 
@@ -357,6 +376,10 @@ function renderMenu() {
             <!-- text populated by updateMenu -->
         </div>
 
+        <div id="solo-name-section" style="margin-top: 10px; display: none;">
+             <input type="text" id="solo-name-input" value="${state.soloName}" placeholder="Your Name" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 200px; text-align: center;">
+        </div>
+
         <div class="subtitle" style="margin-top: 20px;">Number of Questions</div>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <button class="btn" id="count-5" onclick="setCount(5)">5</button>
@@ -382,11 +405,43 @@ function renderMenu() {
         <div style="margin-bottom: 20px; margin-top: 10px;">
              <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
              <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
-             <input type="number" id="seed-input" placeholder="Random" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
+             <div style="display:flex; justify-content:center; gap:8px;">
+                <input type="number" id="seed-input" placeholder="Random" value="${state.seed || ''}" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
+                <button class="btn btn-outlined" id="share-code-btn" title="Share Code"><span class="material-symbols-outlined">share</span></button>
+             </div>
         </div>
 
         <button class="btn btn-filled" style="width: 200px; margin-top: 20px;" id="start-btn">Start Game</button>
     `;
+
+    // Handle solo name input
+    const nameInput = div.querySelector('#solo-name-input');
+    if (nameInput) {
+        nameInput.oninput = (e) => {
+            state.soloName = e.target.value;
+        };
+    }
+
+    // Handle Seed Input
+    const seedIn = div.querySelector('#seed-input');
+    seedIn.oninput = (e) => {
+        state.seed = parseInt(e.target.value) || null;
+    };
+
+    div.querySelector('#share-code-btn').onclick = () => {
+        const code = seedIn.value || 'Random';
+        if (code === 'Random') {
+            showToast("Enter a code first to share!");
+            return;
+        }
+        const url = window.location.href.split('?')[0] + '?code=' + code;
+        const text = `Join my Crackeggs Quiz! Code: ${code}\n${url}`;
+        if (navigator.share) {
+            navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
+        }
+    };
 
     div.querySelector('#start-btn').onclick = () => {
         const seedInput = div.querySelector('#seed-input').value;
@@ -395,7 +450,7 @@ function renderMenu() {
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
         } else {
-            startGame(['Player 1'], seed);
+            startGame([state.soloName || 'Player 1'], seed);
         }
     };
 
@@ -413,6 +468,9 @@ function updateMenu() {
     document.getElementById('mode-solo').className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('mode-party').className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('mode-desc').innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
+
+    const soloSection = document.getElementById('solo-name-section');
+    if (soloSection) soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
 
     document.getElementById('count-5').className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('count-10').className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
@@ -490,7 +548,7 @@ function startGame(players, seed) {
     const playerChips = {};
     players.forEach(p => {
         answers[p] = {};
-        playerChips[p] = { '5050': true, 'range': true, 'audience': true };
+        playerChips[p] = { '5050': true, 'range': true, 'audience': true, 'context': true };
     });
 
     setState({
@@ -576,12 +634,29 @@ function renderGame() {
         btnRange.innerText = 'Range';
         btnRange.disabled = !chips['range'] || question.type === 'who_said_it';
 
+        // Context
+        const btnContext = document.createElement('button');
+        btnContext.className = 'chip-btn';
+        btnContext.innerText = 'Context';
+        btnContext.disabled = !chips['context'] || !question.context;
+
         chipsDiv.appendChild(btn5050);
         chipsDiv.appendChild(btnAudience);
         chipsDiv.appendChild(btnRange);
+        chipsDiv.appendChild(btnContext);
         div.appendChild(chipsDiv);
 
         // Handlers
+        btnContext.onclick = () => {
+             showModal("Context", question.context.join('\n\n'), [
+                 { text: "Close", primary: true, value: true }
+             ]).then(() => {
+                 chips['context'] = false;
+                 btnContext.disabled = true;
+                 saveState();
+             });
+        };
+
         btn5050.onclick = () => {
             showModal("Use 50/50 Chip?", "This will remove 2 incorrect options.", [
                 { text: "Cancel", primary: false, value: false },
@@ -718,7 +793,12 @@ function renderGame() {
     card.style.width = '100%';
     card.style.boxSizing = 'border-box';
 
-    let content = `<div class="question-text">${escapeHTML(question.question).replace(/\n/g, '<br>')}</div>`;
+    let content = `<div class="question-text">
+        ${escapeHTML(question.question).replace(/\n/g, '<br>')}
+        ${(question.dateDisplay && (question.type === 'who_said_it' || question.type === 'count')) ?
+          `<button class="icon-btn material-symbols-outlined" id="show-date-btn" style="vertical-align: middle; margin-left: 8px; font-size: 1.2rem;" title="Show Date">calendar_month</button>`
+          : ''}
+    </div>`;
 
     if (question.type === 'who_said_it') {
         content += `<div class="options-grid">`;
@@ -744,6 +824,11 @@ function renderGame() {
 
     card.innerHTML = content;
     div.appendChild(card);
+
+    const dateBtn = card.querySelector('#show-date-btn');
+    if (dateBtn) {
+        dateBtn.onclick = () => showToast("Date: " + question.dateDisplay);
+    }
 
     const feedback = document.createElement('div');
     feedback.className = 'feedback';
@@ -816,8 +901,11 @@ function renderGame() {
                 const chosen = btn.dataset.value;
                 const isCorrect = chosen === question.correctAnswer;
 
+                // Mark selection
+                btn.classList.add('selected');
+
                 if (state.revealAtEnd) {
-                    btn.classList.add('btn-filled');
+                    // Just rely on .selected style
                 } else {
                     btn.classList.add(isCorrect ? 'btn-filled' : 'btn-tonal');
                     if (!isCorrect) {
@@ -918,6 +1006,9 @@ function renderResults() {
     const homeBtn = div.querySelector('#home-btn');
 
     drumBtn.onclick = () => {
+        sounds.drum.currentTime = 0;
+        sounds.drum.play().catch(e => console.warn('Drum sound failed', e));
+
         drumContainer.innerHTML = '';
 
         // Create full screen overlay
