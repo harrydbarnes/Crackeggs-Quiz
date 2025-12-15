@@ -386,8 +386,8 @@ function renderMenu() {
     div.innerHTML = `
         <h1>Crackeggs Quiz</h1>
 
-        <div class="subtitle">Select Game Mode</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div class="subtitle" style="margin-bottom: 8px;">Select Game Mode</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
             <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
             <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
         </div>
@@ -399,15 +399,15 @@ function renderMenu() {
              <input type="text" id="solo-name-input" value="${state.soloName}" placeholder="Your Name" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 200px; text-align: center;">
         </div>
 
-        <div class="subtitle" style="margin-top: 20px;">Number of Questions</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div class="subtitle" style="margin-top: 20px; margin-bottom: 8px;">Number of Questions</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
             <button class="btn" id="count-5" onclick="setCount(5)">5</button>
             <button class="btn" id="count-10" onclick="setCount(10)">10</button>
             <button class="btn" id="count-20" onclick="setCount(20)">20</button>
         </div>
 
-        <div class="subtitle" style="margin-top: 20px;">Reveal Answers</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div class="subtitle" style="margin-top: 20px; margin-bottom: 8px;">Reveal Answers</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
              <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
              <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
         </div>
@@ -415,18 +415,15 @@ function renderMenu() {
              <!-- text populated by updateMenu -->
         </div>
 
-        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <input type="checkbox" id="enable-chips" ${state.enableChips ? 'checked' : ''} onchange="setEnableChips(this.checked)" style="transform: scale(1.2);">
-            <label for="enable-chips" style="font-weight: 500;">Enable Chip Mode</label>
+        <div class="subtitle" style="margin-top: 20px; margin-bottom: 8px;">Chip Mode</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+             <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
+             <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
         </div>
-        <div class="info-text">50/50, Range Reducer, Ask Audience</div>
+        <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
 
-        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <input type="checkbox" id="filter-year" ${state.filterYear ? 'checked' : ''} onchange="setFilterYear(this.checked)" style="transform: scale(1.2);">
-            <label for="filter-year" style="font-weight: 500;">Limit Year Range</label>
-        </div>
-
-        <div id="year-range-container" style="display: none; flex-direction: column; align-items: center; margin-top: 10px;">
+        <div class="subtitle" style="margin-top: 20px; margin-bottom: 0px;">Year Range</div>
+        <div id="year-range-container" style="display: flex; flex-direction: column; align-items: center; margin-top: 5px;">
             <div style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem; color: var(--md-sys-color-primary);" id="year-display">
                 ${state.startYear} - ${state.endYear}
             </div>
@@ -487,6 +484,12 @@ function renderMenu() {
 
         track.style.left = `${minPercent}%`;
         track.style.width = `${maxPercent - minPercent}%`;
+
+        const yearInfo = document.getElementById('year-info');
+        if (yearInfo) {
+            const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
+            yearInfo.style.display = isFullRange ? 'none' : 'block';
+        }
     };
 
     if (rangeMin && rangeMax) {
@@ -568,11 +571,19 @@ function updateMenu() {
         'Correct answers hidden until the very end. Perfect for competitive party play!' :
         'See the correct answer and points immediately after every question.';
 
-    const yearContainer = document.getElementById('year-range-container');
+    // Chip Mode Buttons
+    const btnYes = document.getElementById('chips-yes');
+    const btnNo = document.getElementById('chips-no');
+    if (btnYes && btnNo) {
+        btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+        btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    // Year info visibility
     const yearInfo = document.getElementById('year-info');
-    if (yearContainer) {
-        yearContainer.style.display = state.filterYear ? 'flex' : 'none';
-        yearInfo.style.display = state.filterYear ? 'block' : 'none';
+    if (yearInfo) {
+        const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
+        yearInfo.style.display = isFullRange ? 'none' : 'block';
     }
 }
 
@@ -630,7 +641,10 @@ function startGame(players, seed) {
     const rng = new Random(seed);
     let pool = [...window.QUESTION_DATABASE];
 
-    if (state.filterYear) {
+    // Check if filtering is needed
+    const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
+
+    if (!isFullRange) {
          pool = pool.filter(q => {
              // Exclude if no year (e.g. Count) or outside range
              return q.year && q.year >= state.startYear && q.year <= state.endYear;
