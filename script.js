@@ -81,7 +81,7 @@ function showModal(title, content, actions = []) {
              mTitle.style.display = 'none';
         }
 
-        mContent.innerText = content || '';
+        mContent.textContent = content || '';
         mActions.innerHTML = '';
 
         if (actions.length === 0) {
