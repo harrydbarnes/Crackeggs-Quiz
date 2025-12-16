@@ -8,6 +8,11 @@ import time
 INPUT_FILE = 'scripts/chat_log.txt'
 OUTPUT_FILE = 'questions.js'
 
+def _append_message(messages, message_to_add):
+    if message_to_add:
+        message_to_add['index'] = len(messages)
+        messages.append(message_to_add)
+
 def parse_chat(filepath):
     messages = []
     # Regex to match: 08/07/2021, 9:29 am - Sender: Message
@@ -22,8 +27,8 @@ def parse_chat(filepath):
 
             match = pattern.match(line)
             if match:
-                if current_message:
-                    messages.append(current_message)
+                # Use helper function to append
+                _append_message(messages, current_message)
 
                 date_str, time_str, ampm, sender, text = match.groups()
 
@@ -41,6 +46,7 @@ def parse_chat(filepath):
 
                 current_message = {
                     'date': dt, # Keep datetime obj for python logic
+                    'date_str': date_str,
                     'timestamp': timestamp, # For JSON
                     'sender': sender,
                     'text': text
@@ -49,10 +55,25 @@ def parse_chat(filepath):
                 if current_message:
                     current_message['text'] += "\n" + line
 
-        if current_message:
-            messages.append(current_message)
+        # Use helper function to append
+        _append_message(messages, current_message)
 
     return messages
+
+def get_context(messages, index):
+    ctx = []
+    # Get 2 before
+    for i in range(max(0, index - 2), index):
+        ctx.append(f"{messages[i]['sender']}: {messages[i]['text']}")
+
+    # Placeholder for the question message itself (optional, but maybe useful to skip or mark)
+    ctx.append("--- Question Message ---")
+
+    # Get 2 after
+    for i in range(index + 1, min(len(messages), index + 3)):
+        ctx.append(f"{messages[i]['sender']}: {messages[i]['text']}")
+
+    return ctx
 
 def generate_questions(messages):
     questions = []
@@ -67,10 +88,10 @@ def generate_questions(messages):
     senders = list(set(m['sender'] for m in messages))
 
     # 1. Who said it?
-    # Increased to 200 questions
+    # Increased to 300 questions
     candidates = [m for m in messages if len(m['text']) > 20 and 'http' not in m['text']]
 
-    for _ in range(200):
+    for _ in range(300):
         if not candidates: break
         msg = random.choice(candidates)
         candidates.remove(msg)
@@ -88,14 +109,17 @@ def generate_questions(messages):
             'question': f'Who said: "{msg["text"]}"?',
             'options': options,
             'correctAnswer': correct_sender,
-            'id': f'who_{random.randint(10000, 99999)}'
+            'id': f'who_{random.randint(10000, 99999)}',
+            'context': get_context(messages, msg['index']),
+            'dateDisplay': msg.get('date_str', 'Unknown Date'),
+            'year': msg['date'].year if msg['date'] else None
         })
 
     # 2. When did this happen?
-    # Increased to 120 questions
+    # Increased to 200 questions
     date_candidates = [m for m in valid_messages if len(m['text']) > 30 and 'http' not in m['text']]
 
-    for _ in range(120):
+    for _ in range(200):
         if not date_candidates: break
         msg = random.choice(date_candidates)
         date_candidates.remove(msg) # unique questions
@@ -106,7 +130,9 @@ def generate_questions(messages):
             'correctAnswer': msg['timestamp'],
             'min': min_time,
             'max': max_time,
-            'id': f'when_{random.randint(10000, 99999)}'
+            'id': f'when_{random.randint(10000, 99999)}',
+            'context': get_context(messages, msg['index']),
+            'year': msg['date'].year if msg['date'] else None
         })
 
     # 3. Counts
@@ -116,8 +142,8 @@ def generate_questions(messages):
     filtered_words = [w for w in words if w not in stopwords and len(w) > 3]
     word_counts = Counter(filtered_words)
 
-    # Increased to 80 most common words
-    for word, count in word_counts.most_common(80):
+    # Increased to 120 most common words
+    for word, count in word_counts.most_common(120):
         if count < 5: continue
         questions.append({
             'type': 'count',

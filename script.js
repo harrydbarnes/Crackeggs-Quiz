@@ -12,7 +12,19 @@ const state = {
     seed: null,
     revealAtEnd: false,
     enableChips: true,
-    playerChips: {} // { playerName: { '5050': true, 'range': true, 'audience': true } }
+    playerChips: {}, // { playerName: { '5050': true, 'range': true, 'audience': true, 'context': true } }
+    soloName: 'Player 1',
+    filterYear: false,
+    startYear: 2020,
+    endYear: 2024,
+    minDbYear: 2000,
+    maxDbYear: 2030
+};
+
+// Sounds
+const sounds = {
+    drum: new Audio('https://actions.google.com/sounds/v1/cartoon/drum_roll.ogg'),
+    confetti: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg')
 };
 
 // Track current view to allow smooth updates
@@ -115,6 +127,8 @@ function showModal(title, content, actions = []) {
 }
 
 function triggerConfetti() {
+    sounds.confetti.currentTime = 0;
+    sounds.confetti.play().catch(e => console.warn('Confetti sound failed', e));
     const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
 
     for (let i = 0; i < 100; i++) {
@@ -179,6 +193,14 @@ function formatDate(timestamp) {
     return d.toLocaleDateString();
 }
 
+function updateYearInfoVisibility() {
+    const yearInfo = document.getElementById('year-info');
+    if (yearInfo) {
+        const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
+        yearInfo.style.display = isFullRange ? 'none' : 'block';
+    }
+}
+
 // --- Persistence ---
 
 function saveState() {
@@ -205,7 +227,31 @@ function loadState() {
 
 function init() {
     createUIContainers();
+
+    // Determine DB Year Range
+    const years = window.QUESTION_DATABASE
+        .map(q => q.year)
+        .filter(y => y !== null && y !== undefined);
+
+    if (years.length > 0) {
+        state.minDbYear = Math.min(...years);
+        state.maxDbYear = Math.max(...years);
+        // Set defaults if not loaded from state (loadState will override if exists, but we want valid bounds)
+        state.startYear = state.minDbYear;
+        state.endYear = state.maxDbYear;
+    }
+
     loadState();
+
+    // Check URL for code
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code')) {
+        const code = parseInt(params.get('code'), 10);
+        if (!isNaN(code)) {
+            setState({ seed: code, view: 'menu' });
+        }
+    }
+
     render();
 }
 
@@ -260,7 +306,7 @@ function render() {
         topBar.className = 'top-bar';
         topBar.innerHTML = `
             <button class="icon-btn material-symbols-outlined" id="back-btn">arrow_back</button>
-            <span id="header-code" style="margin-left: auto; align-self: center; font-weight: 500; margin-right: 16px; opacity: 0.7;">
+            <span id="header-code" class="header-code">
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
         `;
@@ -305,7 +351,7 @@ function renderIntro() {
     div.className = 'view view-centered';
     div.innerHTML = `
         <div id="intro-text-container">
-            <h1 id="intro-title" style="margin:0;">Ready to crack eggs?</h1>
+            <h1 id="intro-title" class="m-0">Ready to crack eggs?</h1>
         </div>
         <button class="btn btn-filled" id="intro-btn">Click me</button>
     `;
@@ -348,8 +394,8 @@ function renderMenu() {
     div.innerHTML = `
         <h1>Crackeggs Quiz</h1>
 
-        <div class="subtitle">Select Game Mode</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div class="subtitle mb-small">Select Game Mode</div>
+        <div class="flex-row mb-small">
             <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
             <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
         </div>
@@ -357,45 +403,141 @@ function renderMenu() {
             <!-- text populated by updateMenu -->
         </div>
 
-        <div class="subtitle" style="margin-top: 20px;">Number of Questions</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div id="solo-name-section" class="mt-small" style="display: none;">
+             <input type="text" id="solo-name-input" class="input-standard" value="${state.soloName}" placeholder="Your Name">
+        </div>
+
+        <div class="subtitle mt-med mb-small">Number of Questions</div>
+        <div class="flex-row mb-small">
             <button class="btn" id="count-5" onclick="setCount(5)">5</button>
             <button class="btn" id="count-10" onclick="setCount(10)">10</button>
             <button class="btn" id="count-20" onclick="setCount(20)">20</button>
         </div>
 
-        <div class="subtitle" style="margin-top: 20px;">Reveal Answers</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div class="subtitle mt-med mb-small">Reveal Answers</div>
+        <div class="flex-row mb-small">
              <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
              <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
         </div>
-        <div class="info-text" id="reveal-desc" style="max-width: 300px;">
+        <div class="info-text max-w-300" id="reveal-desc">
              <!-- text populated by updateMenu -->
         </div>
 
-        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <input type="checkbox" id="enable-chips" ${state.enableChips ? 'checked' : ''} onchange="setEnableChips(this.checked)" style="transform: scale(1.2);">
-            <label for="enable-chips" style="font-weight: 500;">Enable Chip Mode</label>
+        <div class="subtitle mt-med mb-small">Chip Mode</div>
+        <div class="flex-row mb-small">
+             <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
+             <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
         </div>
-        <div class="info-text">50/50, Range Reducer, Ask Audience</div>
+        <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
 
-        <div style="margin-bottom: 20px; margin-top: 10px;">
-             <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
-             <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
-             <input type="number" id="seed-input" placeholder="Random" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
+        <div class="subtitle mt-med m-0">Year Range</div>
+        <div id="year-range-container" class="flex-col-center mt-xsmall">
+            <div id="year-display" class="year-display">
+                ${state.startYear} - ${state.endYear}
+            </div>
+            <div class="slider-wrapper">
+                <div class="slider-track-bg"></div>
+                <div class="slider-track-fill" id="slider-track"></div>
+                <input type="range" id="range-min" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.startYear}" step="1">
+                <input type="range" id="range-max" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.endYear}" step="1">
+            </div>
+        </div>
+        <div id="year-info" class="info-text mb-small" style="display:none;">Excludes 'Count' questions.</div>
+
+        <div class="mb-med mt-small">
+             <label class="form-label">Quiz Code (Optional)</label>
+             <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
+             <div class="flex-center">
+                <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}">
+                <button class="btn btn-outlined" id="share-code-btn" title="Share Code"><span class="material-symbols-outlined">share</span></button>
+             </div>
         </div>
 
-        <button class="btn btn-filled" style="width: 200px; margin-top: 20px;" id="start-btn">Start Game</button>
+        <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
     `;
+
+    // Handle solo name input
+    const nameInput = div.querySelector('#solo-name-input');
+    if (nameInput) {
+        nameInput.oninput = (e) => {
+            state.soloName = e.target.value;
+        };
+    }
+
+    // Handle Seed Input
+    const seedIn = div.querySelector('#seed-input');
+    seedIn.oninput = (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.seed = isNaN(val) ? null : val;
+    };
+
+    // Handle Year Inputs (Slider)
+    const rangeMin = div.querySelector('#range-min');
+    const rangeMax = div.querySelector('#range-max');
+    const track = div.querySelector('#slider-track');
+    const display = div.querySelector('#year-display');
+
+    const updateSlider = () => {
+        let minVal = parseInt(rangeMin.value, 10);
+        let maxVal = parseInt(rangeMax.value, 10);
+
+        state.startYear = minVal;
+        state.endYear = maxVal;
+
+        display.innerText = `${state.startYear} - ${state.endYear}`;
+
+        const total = state.maxDbYear - state.minDbYear;
+        const safeTotal = total === 0 ? 1 : total;
+        const minPercent = ((state.startYear - state.minDbYear) / safeTotal) * 100;
+        const maxPercent = ((state.endYear - state.minDbYear) / safeTotal) * 100;
+
+        track.style.left = `${minPercent}%`;
+        track.style.width = `${maxPercent - minPercent}%`;
+
+        updateYearInfoVisibility();
+    };
+
+    if (rangeMin && rangeMax) {
+        rangeMin.oninput = () => {
+            if (parseInt(rangeMin.value, 10) > parseInt(rangeMax.value, 10)) {
+                rangeMin.value = rangeMax.value;
+            }
+            updateSlider();
+        };
+
+        rangeMax.oninput = () => {
+            if (parseInt(rangeMax.value, 10) < parseInt(rangeMin.value, 10)) {
+                rangeMax.value = rangeMin.value;
+            }
+            updateSlider();
+        };
+
+        setTimeout(updateSlider, 0);
+    }
+
+    div.querySelector('#share-code-btn').onclick = () => {
+        const code = seedIn.value || 'Random';
+        if (code === 'Random') {
+            showToast("Enter a code first to share!");
+            return;
+        }
+        const url = window.location.href.split('?')[0] + '?code=' + code;
+        const text = `Join my Crackeggs Quiz! Code: ${code}\n${url}`;
+        if (navigator.share) {
+            navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
+        }
+    };
 
     div.querySelector('#start-btn').onclick = () => {
         const seedInput = div.querySelector('#seed-input').value;
-        const seed = seedInput ? parseInt(seedInput) : Math.floor(Math.random() * 9000) + 1000;
+        const seed = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 9000) + 1000;
 
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
         } else {
-            startGame(['Player 1'], seed);
+            startGame([state.soloName || 'Player 1'], seed);
         }
     };
 
@@ -408,11 +550,15 @@ window.setMode = (m) => setState({ mode: m });
 window.setCount = (n) => setState({ questionCount: n });
 window.setReveal = (atEnd) => setState({ revealAtEnd: atEnd });
 window.setEnableChips = (enabled) => setState({ enableChips: enabled });
+window.setFilterYear = (enabled) => setState({ filterYear: enabled });
 
 function updateMenu() {
     document.getElementById('mode-solo').className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('mode-party').className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('mode-desc').innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
+
+    const soloSection = document.getElementById('solo-name-section');
+    if (soloSection) soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
 
     document.getElementById('count-5').className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
     document.getElementById('count-10').className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
@@ -423,6 +569,16 @@ function updateMenu() {
     document.getElementById('reveal-desc').innerText = state.revealAtEnd ?
         'Correct answers hidden until the very end. Perfect for competitive party play!' :
         'See the correct answer and points immediately after every question.';
+
+    // Chip Mode Buttons
+    const btnYes = document.getElementById('chips-yes');
+    const btnNo = document.getElementById('chips-no');
+    if (btnYes && btnNo) {
+        btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+        btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    updateYearInfoVisibility();
 }
 
 
@@ -430,12 +586,12 @@ function renderSetup() {
     const div = document.createElement('div');
     div.className = 'view';
     div.innerHTML = `
-        <h2 style="margin-top: 0;">Quiz Code: ${state.seed}</h2>
+        <h2 class="m-0">Quiz Code: ${state.seed}</h2>
         <h2>Who is playing?</h2>
         <div class="subtitle">Enter player names in order. Pass the phone when prompted.</div>
-        <div id="players-list" style="width: 100%; margin-bottom: 20px;">
+        <div id="players-list" class="w-100 mb-med">
         </div>
-        <button class="btn btn-outlined" id="add-player" style="margin-bottom: 20px;">+ Add Player</button>
+        <button class="btn btn-outlined setup-btn-add" id="add-player">+ Add Player</button>
         <button class="btn btn-filled" id="start-party">Start Party</button>
     `;
 
@@ -444,15 +600,11 @@ function renderSetup() {
 
     const addInput = () => {
         const wrap = document.createElement('div');
-        wrap.style.marginBottom = '10px';
+        wrap.className = 'setup-list-item';
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'player-input';
+        input.className = 'player-input input-player';
         input.placeholder = `Player ${list.children.length + 1}`;
-        input.style.padding = '10px';
-        input.style.borderRadius = '8px';
-        input.style.border = '1px solid #ccc';
-        input.style.width = '80%';
         wrap.appendChild(input);
         list.appendChild(wrap);
     };
@@ -479,6 +631,25 @@ function startGame(players, seed) {
     const rng = new Random(seed);
     let pool = [...window.QUESTION_DATABASE];
 
+    // Check if filtering is needed
+    const isFullRange = state.startYear === state.minDbYear && state.endYear === state.maxDbYear;
+
+    if (!isFullRange) {
+         pool = pool.filter(q => {
+             // Exclude if no year (e.g. Count) or outside range
+             return q.year && q.year >= state.startYear && q.year <= state.endYear;
+         });
+
+         if (pool.length === 0) {
+             showToast("No questions found for this year range!");
+             return;
+         }
+
+         if (pool.length < state.questionCount) {
+             showToast(`Only ${pool.length} questions available for this range!`);
+         }
+    }
+
     for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(rng.nextFloat() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -490,7 +661,7 @@ function startGame(players, seed) {
     const playerChips = {};
     players.forEach(p => {
         answers[p] = {};
-        playerChips[p] = { '5050': true, 'range': true, 'audience': true };
+        playerChips[p] = { '5050': true, 'range': true, 'audience': true, 'context': true };
     });
 
     setState({
@@ -518,13 +689,13 @@ function renderPassScreen() {
     }
 
     div.innerHTML = `
-        <span class="material-symbols-outlined" style="font-size: 64px; margin-bottom: 20px;">smartphone</span>
+        <span class="material-symbols-outlined pass-icon">smartphone</span>
         <h2>${titleText}</h2>
         <h1>${escapeHTML(player)}</h1>
-        <div style="margin-top: 20px;">
+        <div class="mt-med">
              ${state.currentPlayerIndex > 0 ? '(Don\'t peek!)' : ''}
         </div>
-        <button class="btn" style="background: white; color: var(--md-sys-color-primary); margin-top: 40px;" id="ready-btn">I am Ready</button>
+        <button class="btn btn-white-primary" id="ready-btn">I am Ready</button>
     `;
 
     div.querySelector('#ready-btn').onclick = () => {
@@ -543,10 +714,7 @@ function renderGame() {
     div.className = 'view';
 
     const header = document.createElement('div');
-    header.style.width = '100%';
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.marginBottom = '20px';
+    header.className = 'flex-justify-between w-100 mb-med';
     header.innerHTML = `
         <span>${escapeHTML(player)}</span>
         <span>${state.currentQuestionIndex + 1} / ${state.questions.length}</span>
@@ -576,12 +744,29 @@ function renderGame() {
         btnRange.innerText = 'Range';
         btnRange.disabled = !chips['range'] || question.type === 'who_said_it';
 
+        // Context
+        const btnContext = document.createElement('button');
+        btnContext.className = 'chip-btn';
+        btnContext.innerText = 'Context';
+        btnContext.disabled = !chips['context'] || !question.context;
+
         chipsDiv.appendChild(btn5050);
         chipsDiv.appendChild(btnAudience);
         chipsDiv.appendChild(btnRange);
+        chipsDiv.appendChild(btnContext);
         div.appendChild(chipsDiv);
 
         // Handlers
+        btnContext.onclick = () => {
+             showModal("Context", question.context.join('\n\n'), [
+                 { text: "Close", primary: true, value: true }
+             ]).then(() => {
+                 chips['context'] = false;
+                 btnContext.disabled = true;
+                 saveState();
+             });
+        };
+
         btn5050.onclick = () => {
             showModal("Use 50/50 Chip?", "This will remove 2 incorrect options.", [
                 { text: "Cancel", primary: false, value: false },
@@ -714,11 +899,14 @@ function renderGame() {
     }
 
     const card = document.createElement('div');
-    card.className = 'card';
-    card.style.width = '100%';
-    card.style.boxSizing = 'border-box';
+    card.className = 'card w-100';
 
-    let content = `<div class="question-text">${escapeHTML(question.question).replace(/\n/g, '<br>')}</div>`;
+    let content = `<div class="question-text">
+        ${escapeHTML(question.question).replace(/\n/g, '<br>')}
+        ${question.dateDisplay ?
+          `<button class="icon-btn material-symbols-outlined show-date-btn" id="show-date-btn" title="Show Date">calendar_month</button>`
+          : ''}
+    </div>`;
 
     if (question.type === 'who_said_it') {
         content += `<div class="options-grid">`;
@@ -734,28 +922,29 @@ function renderGame() {
         content += `
             <div class="slider-container">
                 <input type="range" min="${min}" max="${max}" value="${startVal}" class="slider" id="slider-input">
-                <div style="text-align: center; font-size: 1.5rem; font-weight: bold; margin-top: 10px;" id="slider-val">
+                <div class="text-center text-bold mt-small" style="font-size: 1.5rem;" id="slider-val">
                     ${question.type === 'when' ? formatDate(startVal) : startVal}
                 </div>
             </div>
-            <button class="btn btn-filled" id="submit-slider" style="width: 100%; margin-top: 20px;">Submit</button>
+            <button class="btn btn-filled w-100 mt-med" id="submit-slider">Submit</button>
         `;
     }
 
     card.innerHTML = content;
     div.appendChild(card);
 
+    const dateBtn = card.querySelector('#show-date-btn');
+    if (dateBtn) {
+        dateBtn.onclick = () => showToast("Date: " + question.dateDisplay);
+    }
+
     const feedback = document.createElement('div');
-    feedback.className = 'feedback';
-    feedback.style.textAlign = 'center';
-    feedback.style.marginTop = '10px';
+    feedback.className = 'feedback text-center mt-small';
     div.appendChild(feedback);
 
     // Add Next Button (Hidden initially)
     const nextBtn = document.createElement('button');
-    nextBtn.className = 'btn btn-filled hidden';
-    nextBtn.style.marginTop = '20px';
-    nextBtn.style.width = '100%';
+    nextBtn.className = 'btn btn-filled hidden w-100 mt-med';
     nextBtn.innerText = 'Next Question';
     div.appendChild(nextBtn);
 
@@ -777,7 +966,7 @@ function renderGame() {
         }
 
         if (state.revealAtEnd) {
-             feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
+             feedback.innerHTML = '<span class="primary-color">Answer Saved</span>';
         } else {
             const points = calculatePoints(question, answer);
 
@@ -816,8 +1005,11 @@ function renderGame() {
                 const chosen = btn.dataset.value;
                 const isCorrect = chosen === question.correctAnswer;
 
+                // Mark selection
+                btn.classList.add('selected');
+
                 if (state.revealAtEnd) {
-                    btn.classList.add('btn-filled');
+                    // Just rely on .selected style
                 } else {
                     btn.classList.add(isCorrect ? 'btn-filled' : 'btn-tonal');
                     if (!isCorrect) {
@@ -837,11 +1029,11 @@ function renderGame() {
         const subBtn = card.querySelector('#submit-slider');
 
         slider.oninput = () => {
-            valDisplay.innerText = question.type === 'when' ? formatDate(parseInt(slider.value)) : slider.value;
+            valDisplay.innerText = question.type === 'when' ? formatDate(parseInt(slider.value, 10)) : slider.value;
         };
 
         subBtn.onclick = () => {
-            handleAnswer(parseInt(slider.value));
+            handleAnswer(parseInt(slider.value, 10));
         };
     }
 
@@ -886,7 +1078,7 @@ function renderResults() {
     const sortedPlayers = [...state.players].sort((a, b) => state.scores[b] - state.scores[a]);
 
     let drumRollHtml = `
-        <button class="btn btn-filled" id="drum-roll-btn" style="padding: 20px; font-size: 1.2rem; margin-bottom: 20px;">
+        <button class="btn btn-filled btn-large" id="drum-roll-btn">
             🥁 Drum Roll 🥁
         </button>
     `;
@@ -894,11 +1086,11 @@ function renderResults() {
     let html = `
         <h1>Results</h1>
         <div class="subtitle">Quiz Code: ${state.seed}</div>
-        <div style="margin-bottom: 20px; font-weight: bold; color: var(--md-sys-color-primary);">(Higher Score is Better!)</div>
+        <div class="mb-med text-bold primary-color">(Higher Score is Better!)</div>
 
         <div id="drum-container">${drumRollHtml}</div>
 
-        <div id="leaderboard" style="width: 100%; max-width: 400px; margin-bottom: 20px;">
+        <div id="leaderboard" class="w-100 max-w-300 mb-med">
             <!-- filled by animation -->
         </div>
 
@@ -918,6 +1110,9 @@ function renderResults() {
     const homeBtn = div.querySelector('#home-btn');
 
     drumBtn.onclick = () => {
+        sounds.drum.currentTime = 0;
+        sounds.drum.play().catch(e => console.warn('Drum sound failed', e));
+
         drumContainer.innerHTML = '';
 
         // Create full screen overlay
