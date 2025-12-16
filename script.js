@@ -445,7 +445,7 @@ function renderMenu() {
         <div id="year-info" class="info-text mb-small" style="display:none;">Excludes 'Count' questions.</div>
 
         <div class="mb-med mt-small">
-             <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
+             <label class="form-label">Quiz Code (Optional)</label>
              <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
              <div class="flex-center">
                 <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}">
