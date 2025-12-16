@@ -903,7 +903,7 @@ function renderGame() {
 
     let content = `<div class="question-text">
         ${escapeHTML(question.question).replace(/\n/g, '<br>')}
-        ${(question.dateDisplay && (question.type === 'who_said_it' || question.type === 'count')) ?
+        ${question.dateDisplay ?
           `<button class="icon-btn material-symbols-outlined show-date-btn" id="show-date-btn" title="Show Date">calendar_month</button>`
           : ''}
     </div>`;
