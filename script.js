@@ -306,7 +306,7 @@ function render() {
         topBar.className = 'top-bar';
         topBar.innerHTML = `
             <button class="icon-btn material-symbols-outlined" id="back-btn">arrow_back</button>
-            <span id="header-code" style="margin-left: auto; align-self: center; font-weight: 500; margin-right: 16px; opacity: 0.7;">
+            <span id="header-code" class="header-code">
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
         `;
@@ -351,7 +351,7 @@ function renderIntro() {
     div.className = 'view view-centered';
     div.innerHTML = `
         <div id="intro-text-container">
-            <h1 id="intro-title" style="margin:0;">Ready to crack eggs?</h1>
+            <h1 id="intro-title" class="m-0">Ready to crack eggs?</h1>
         </div>
         <button class="btn btn-filled" id="intro-btn">Click me</button>
     `;
@@ -394,8 +394,8 @@ function renderMenu() {
     div.innerHTML = `
         <h1>Crackeggs Quiz</h1>
 
-        <div class="subtitle" style="margin-bottom: 8px;">Select Game Mode</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+        <div class="subtitle mb-small">Select Game Mode</div>
+        <div class="flex-row mb-small">
             <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
             <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
         </div>
@@ -403,36 +403,36 @@ function renderMenu() {
             <!-- text populated by updateMenu -->
         </div>
 
-        <div id="solo-name-section" style="margin-top: 10px; display: none;">
-             <input type="text" id="solo-name-input" value="${state.soloName}" placeholder="Your Name" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 200px; text-align: center;">
+        <div id="solo-name-section" class="mt-small" style="display: none;">
+             <input type="text" id="solo-name-input" class="input-standard" value="${state.soloName}" placeholder="Your Name">
         </div>
 
-        <div class="subtitle" style="margin-top: 20px; margin-bottom: 8px;">Number of Questions</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+        <div class="subtitle mt-med mb-small">Number of Questions</div>
+        <div class="flex-row mb-small">
             <button class="btn" id="count-5" onclick="setCount(5)">5</button>
             <button class="btn" id="count-10" onclick="setCount(10)">10</button>
             <button class="btn" id="count-20" onclick="setCount(20)">20</button>
         </div>
 
-        <div class="subtitle" style="margin-top: 20px; margin-bottom: 8px;">Reveal Answers</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+        <div class="subtitle mt-med mb-small">Reveal Answers</div>
+        <div class="flex-row mb-small">
              <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
              <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
         </div>
-        <div class="info-text" id="reveal-desc" style="max-width: 300px;">
+        <div class="info-text max-w-300" id="reveal-desc">
              <!-- text populated by updateMenu -->
         </div>
 
-        <div class="subtitle" style="margin-top: 20px; margin-bottom: 8px;">Chip Mode</div>
-        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+        <div class="subtitle mt-med mb-small">Chip Mode</div>
+        <div class="flex-row mb-small">
              <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
              <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
         </div>
         <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
 
-        <div class="subtitle" style="margin-top: 20px; margin-bottom: 0px;">Year Range</div>
-        <div id="year-range-container" style="display: flex; flex-direction: column; align-items: center; margin-top: 5px;">
-            <div style="font-weight: bold; margin-bottom: 5px; font-size: 1.1rem; color: var(--md-sys-color-primary);" id="year-display">
+        <div class="subtitle mt-med m-0">Year Range</div>
+        <div id="year-range-container" class="flex-col-center mt-xsmall">
+            <div id="year-display" class="year-display">
                 ${state.startYear} - ${state.endYear}
             </div>
             <div class="slider-wrapper">
@@ -442,18 +442,18 @@ function renderMenu() {
                 <input type="range" id="range-max" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.endYear}" step="1">
             </div>
         </div>
-        <div id="year-info" class="info-text" style="display:none; margin-bottom: 10px;">Excludes 'Count' questions.</div>
+        <div id="year-info" class="info-text mb-small" style="display:none;">Excludes 'Count' questions.</div>
 
-        <div style="margin-bottom: 20px; margin-top: 10px;">
+        <div class="mb-med mt-small">
              <label style="display:block; margin-bottom: 5px; font-weight:500;">Quiz Code (Optional)</label>
-             <div class="info-text" style="margin-bottom: 8px;">Enter the same code as your friends to get the same questions.</div>
-             <div style="display:flex; justify-content:center; gap:8px;">
-                <input type="number" id="seed-input" placeholder="Random" value="${state.seed || ''}" style="padding: 12px; border-radius: 8px; border: 1px solid #ccc; width: 120px; text-align: center; font-size: 1rem;">
+             <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
+             <div class="flex-center">
+                <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}">
                 <button class="btn btn-outlined" id="share-code-btn" title="Share Code"><span class="material-symbols-outlined">share</span></button>
              </div>
         </div>
 
-        <button class="btn btn-filled" style="width: 200px; margin-top: 20px;" id="start-btn">Start Game</button>
+        <button class="btn btn-filled mt-med" style="width: 200px;" id="start-btn">Start Game</button>
     `;
 
     // Handle solo name input
@@ -499,21 +499,15 @@ function renderMenu() {
 
     if (rangeMin && rangeMax) {
         rangeMin.oninput = () => {
-            let minVal = parseInt(rangeMin.value, 10);
-            let maxVal = parseInt(rangeMax.value, 10);
-            if (minVal > maxVal) {
-                rangeMin.value = maxVal;
-                minVal = maxVal;
+            if (parseInt(rangeMin.value, 10) > parseInt(rangeMax.value, 10)) {
+                rangeMin.value = rangeMax.value;
             }
             updateSlider();
         };
 
         rangeMax.oninput = () => {
-            let minVal = parseInt(rangeMin.value, 10);
-            let maxVal = parseInt(rangeMax.value, 10);
-            if (maxVal < minVal) {
-                rangeMax.value = minVal;
-                maxVal = minVal;
+            if (parseInt(rangeMax.value, 10) < parseInt(rangeMin.value, 10)) {
+                rangeMax.value = rangeMin.value;
             }
             updateSlider();
         };
@@ -592,12 +586,12 @@ function renderSetup() {
     const div = document.createElement('div');
     div.className = 'view';
     div.innerHTML = `
-        <h2 style="margin-top: 0;">Quiz Code: ${state.seed}</h2>
+        <h2 class="m-0">Quiz Code: ${state.seed}</h2>
         <h2>Who is playing?</h2>
         <div class="subtitle">Enter player names in order. Pass the phone when prompted.</div>
-        <div id="players-list" style="width: 100%; margin-bottom: 20px;">
+        <div id="players-list" class="w-100 mb-med">
         </div>
-        <button class="btn btn-outlined" id="add-player" style="margin-bottom: 20px;">+ Add Player</button>
+        <button class="btn btn-outlined setup-btn-add" id="add-player">+ Add Player</button>
         <button class="btn btn-filled" id="start-party">Start Party</button>
     `;
 
@@ -606,15 +600,11 @@ function renderSetup() {
 
     const addInput = () => {
         const wrap = document.createElement('div');
-        wrap.style.marginBottom = '10px';
+        wrap.className = 'setup-list-item';
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'player-input';
+        input.className = 'player-input input-player';
         input.placeholder = `Player ${list.children.length + 1}`;
-        input.style.padding = '10px';
-        input.style.borderRadius = '8px';
-        input.style.border = '1px solid #ccc';
-        input.style.width = '80%';
         wrap.appendChild(input);
         list.appendChild(wrap);
     };
@@ -699,13 +689,13 @@ function renderPassScreen() {
     }
 
     div.innerHTML = `
-        <span class="material-symbols-outlined" style="font-size: 64px; margin-bottom: 20px;">smartphone</span>
+        <span class="material-symbols-outlined pass-icon">smartphone</span>
         <h2>${titleText}</h2>
         <h1>${escapeHTML(player)}</h1>
-        <div style="margin-top: 20px;">
+        <div class="mt-med">
              ${state.currentPlayerIndex > 0 ? '(Don\'t peek!)' : ''}
         </div>
-        <button class="btn" style="background: white; color: var(--md-sys-color-primary); margin-top: 40px;" id="ready-btn">I am Ready</button>
+        <button class="btn btn-white-primary" id="ready-btn">I am Ready</button>
     `;
 
     div.querySelector('#ready-btn').onclick = () => {
@@ -724,10 +714,7 @@ function renderGame() {
     div.className = 'view';
 
     const header = document.createElement('div');
-    header.style.width = '100%';
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.marginBottom = '20px';
+    header.className = 'flex-justify-between w-100 mb-med';
     header.innerHTML = `
         <span>${escapeHTML(player)}</span>
         <span>${state.currentQuestionIndex + 1} / ${state.questions.length}</span>
@@ -912,9 +899,7 @@ function renderGame() {
     }
 
     const card = document.createElement('div');
-    card.className = 'card';
-    card.style.width = '100%';
-    card.style.boxSizing = 'border-box';
+    card.className = 'card w-100';
 
     let content = `<div class="question-text">
         ${escapeHTML(question.question).replace(/\n/g, '<br>')}
@@ -937,11 +922,11 @@ function renderGame() {
         content += `
             <div class="slider-container">
                 <input type="range" min="${min}" max="${max}" value="${startVal}" class="slider" id="slider-input">
-                <div style="text-align: center; font-size: 1.5rem; font-weight: bold; margin-top: 10px;" id="slider-val">
+                <div class="text-center text-bold mt-small" style="font-size: 1.5rem;" id="slider-val">
                     ${question.type === 'when' ? formatDate(startVal) : startVal}
                 </div>
             </div>
-            <button class="btn btn-filled" id="submit-slider" style="width: 100%; margin-top: 20px;">Submit</button>
+            <button class="btn btn-filled w-100 mt-med" id="submit-slider">Submit</button>
         `;
     }
 
@@ -954,16 +939,12 @@ function renderGame() {
     }
 
     const feedback = document.createElement('div');
-    feedback.className = 'feedback';
-    feedback.style.textAlign = 'center';
-    feedback.style.marginTop = '10px';
+    feedback.className = 'feedback text-center mt-small';
     div.appendChild(feedback);
 
     // Add Next Button (Hidden initially)
     const nextBtn = document.createElement('button');
-    nextBtn.className = 'btn btn-filled hidden';
-    nextBtn.style.marginTop = '20px';
-    nextBtn.style.width = '100%';
+    nextBtn.className = 'btn btn-filled hidden w-100 mt-med';
     nextBtn.innerText = 'Next Question';
     div.appendChild(nextBtn);
 
@@ -985,7 +966,7 @@ function renderGame() {
         }
 
         if (state.revealAtEnd) {
-             feedback.innerHTML = '<span style="color:var(--md-sys-color-primary);">Answer Saved</span>';
+             feedback.innerHTML = '<span class="primary-color">Answer Saved</span>';
         } else {
             const points = calculatePoints(question, answer);
 
@@ -1097,7 +1078,7 @@ function renderResults() {
     const sortedPlayers = [...state.players].sort((a, b) => state.scores[b] - state.scores[a]);
 
     let drumRollHtml = `
-        <button class="btn btn-filled" id="drum-roll-btn" style="padding: 20px; font-size: 1.2rem; margin-bottom: 20px;">
+        <button class="btn btn-filled btn-large" id="drum-roll-btn">
             🥁 Drum Roll 🥁
         </button>
     `;
@@ -1105,11 +1086,11 @@ function renderResults() {
     let html = `
         <h1>Results</h1>
         <div class="subtitle">Quiz Code: ${state.seed}</div>
-        <div style="margin-bottom: 20px; font-weight: bold; color: var(--md-sys-color-primary);">(Higher Score is Better!)</div>
+        <div class="mb-med text-bold primary-color">(Higher Score is Better!)</div>
 
         <div id="drum-container">${drumRollHtml}</div>
 
-        <div id="leaderboard" style="width: 100%; max-width: 400px; margin-bottom: 20px;">
+        <div id="leaderboard" class="w-100 max-w-300 mb-med">
             <!-- filled by animation -->
         </div>
 
