@@ -453,7 +453,7 @@ function renderMenu() {
              </div>
         </div>
 
-        <button class="btn btn-filled mt-med" style="width: 200px;" id="start-btn">Start Game</button>
+        <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
     `;
 
     // Handle solo name input
