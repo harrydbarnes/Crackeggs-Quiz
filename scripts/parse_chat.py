@@ -8,6 +8,11 @@ import time
 INPUT_FILE = 'scripts/chat_log.txt'
 OUTPUT_FILE = 'questions.js'
 
+def _append_message(messages, message_to_add):
+    if message_to_add:
+        message_to_add['index'] = len(messages)
+        messages.append(message_to_add)
+
 def parse_chat(filepath):
     messages = []
     # Regex to match: 08/07/2021, 9:29 am - Sender: Message
@@ -22,9 +27,8 @@ def parse_chat(filepath):
 
             match = pattern.match(line)
             if match:
-                if current_message:
-                    current_message['index'] = len(messages)
-                    messages.append(current_message)
+                # Use helper function to append
+                _append_message(messages, current_message)
 
                 date_str, time_str, ampm, sender, text = match.groups()
 
@@ -51,9 +55,8 @@ def parse_chat(filepath):
                 if current_message:
                     current_message['text'] += "\n" + line
 
-        if current_message:
-            current_message['index'] = len(messages)
-            messages.append(current_message)
+        # Use helper function to append
+        _append_message(messages, current_message)
 
     return messages
 
