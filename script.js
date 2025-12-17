@@ -409,174 +409,178 @@ function renderMenu() {
     const div = document.createElement('div');
     div.className = 'view';
 
-    // Step 1: Game Mode Selection
     if (state.menuStep === 1) {
-        div.innerHTML = `
-            <h1>Crackeggs Quiz</h1>
-
-            <div class="subtitle mb-small">Select Game Mode</div>
-            <div class="flex-row mb-small">
-                <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
-                <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
-            </div>
-            <div class="info-text" id="mode-desc">
-                <!-- text populated by updateMenu -->
-            </div>
-
-            <button class="btn btn-filled mt-med w-200" id="next-btn">Next</button>
-        `;
-
-        div.querySelector('#next-btn').onclick = () => {
-             setState({ menuStep: 2 });
-        };
-    }
-
-    // Step 2: Options
-    if (state.menuStep === 2) {
-        div.innerHTML = `
-            <h1>Game Settings</h1>
-
-            <div id="solo-name-section" class="mt-small" style="display: none;">
-                <input type="text" id="solo-name-input" class="input-standard" value="${state.soloName}" placeholder="Your Name">
-            </div>
-
-            <div class="subtitle mt-med mb-small">Number of Questions</div>
-            <div class="flex-row mb-small">
-                <button class="btn" id="count-5" onclick="setCount(5)">5</button>
-                <button class="btn" id="count-10" onclick="setCount(10)">10</button>
-                <button class="btn" id="count-20" onclick="setCount(20)">20</button>
-            </div>
-
-            <div class="subtitle mt-med mb-small">Reveal Answers</div>
-            <div class="flex-row mb-small">
-                <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
-                <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
-            </div>
-            <div class="info-text max-w-300" id="reveal-desc">
-                <!-- text populated by updateMenu -->
-            </div>
-
-            <div class="subtitle mt-med mb-small">Chip Mode</div>
-            <div class="flex-row mb-small">
-                <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
-                <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
-            </div>
-            <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
-
-            <div class="subtitle mt-med m-0">Year Range</div>
-            <div id="year-range-container" class="flex-col-center mt-xsmall">
-                <div id="year-display" class="year-display">
-                    ${state.startYear} - ${state.endYear}
-                </div>
-                <div class="slider-wrapper">
-                    <div class="slider-track-bg"></div>
-                    <div class="slider-track-fill" id="slider-track"></div>
-                    <input type="range" id="range-min" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.startYear}" step="1">
-                    <input type="range" id="range-max" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.endYear}" step="1">
-                </div>
-            </div>
-            <div id="year-info" class="info-text mb-small" style="display:none;">Excludes 'Count' questions.</div>
-
-            <div class="mb-med mt-small">
-                <label class="form-label">Quiz Code (Optional)</label>
-                <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
-                <div class="flex-center">
-                    <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}">
-                    <button class="btn btn-outlined" id="share-code-btn" title="Share Code"><span class="material-symbols-outlined">share</span></button>
-                </div>
-            </div>
-
-            <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
-        `;
-
-        // Handle solo name input
-        const nameInput = div.querySelector('#solo-name-input');
-        if (nameInput) {
-            nameInput.oninput = (e) => {
-                state.soloName = e.target.value;
-            };
-        }
-
-        // Handle Seed Input
-        const seedIn = div.querySelector('#seed-input');
-        seedIn.oninput = (e) => {
-            const val = parseInt(e.target.value, 10);
-            state.seed = isNaN(val) ? null : val;
-        };
-
-        // Handle Year Inputs (Slider)
-        const rangeMin = div.querySelector('#range-min');
-        const rangeMax = div.querySelector('#range-max');
-        const track = div.querySelector('#slider-track');
-        const display = div.querySelector('#year-display');
-
-        const updateSlider = () => {
-            let minVal = parseInt(rangeMin.value, 10);
-            let maxVal = parseInt(rangeMax.value, 10);
-
-            state.startYear = minVal;
-            state.endYear = maxVal;
-
-            display.innerText = `${state.startYear} - ${state.endYear}`;
-
-            const total = state.maxDbYear - state.minDbYear;
-            const safeTotal = total === 0 ? 1 : total;
-            const minPercent = ((state.startYear - state.minDbYear) / safeTotal) * 100;
-            const maxPercent = ((state.endYear - state.minDbYear) / safeTotal) * 100;
-
-            track.style.left = `${minPercent}%`;
-            track.style.width = `${maxPercent - minPercent}%`;
-
-            updateYearInfoVisibility();
-        };
-
-        if (rangeMin && rangeMax) {
-            rangeMin.oninput = () => {
-                if (parseInt(rangeMin.value, 10) > parseInt(rangeMax.value, 10)) {
-                    rangeMin.value = rangeMax.value;
-                }
-                updateSlider();
-            };
-
-            rangeMax.oninput = () => {
-                if (parseInt(rangeMax.value, 10) < parseInt(rangeMin.value, 10)) {
-                    rangeMax.value = rangeMin.value;
-                }
-                updateSlider();
-            };
-
-            setTimeout(updateSlider, 0);
-        }
-
-        div.querySelector('#share-code-btn').onclick = () => {
-            const code = seedIn.value || 'Random';
-            if (code === 'Random') {
-                showToast("Enter a code first to share!");
-                return;
-            }
-            const url = window.location.href.split('?')[0] + '?code=' + code;
-            const text = `Join my Crackeggs Quiz! Code: ${code}\n${url}`;
-            if (navigator.share) {
-                navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
-            } else {
-                navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
-            }
-        };
-
-        div.querySelector('#start-btn').onclick = () => {
-            const seedInput = div.querySelector('#seed-input').value;
-            const seed = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 9000) + 1000;
-
-            if (state.mode === 'party') {
-                setState({ view: 'setup', seed: seed });
-            } else {
-                startGame([state.soloName || 'Player 1'], seed);
-            }
-        };
+        renderMenuStep1(div);
+    } else if (state.menuStep === 2) {
+        renderMenuStep2(div);
     }
 
     setTimeout(updateMenu, 0);
     return div;
+}
+
+function renderMenuStep1(div) {
+    div.innerHTML = `
+        <h1>Crackeggs Quiz</h1>
+
+        <div class="subtitle mb-small">Select Game Mode</div>
+        <div class="flex-row mb-small">
+            <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
+            <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
+        </div>
+        <div class="info-text" id="mode-desc">
+            <!-- text populated by updateMenu -->
+        </div>
+
+        <button class="btn btn-filled mt-med w-200" id="next-btn">Next</button>
+    `;
+
+    div.querySelector('#next-btn').onclick = () => {
+         setState({ menuStep: 2 });
+    };
+}
+
+function renderMenuStep2(div) {
+    div.innerHTML = `
+        <h1>Game Settings</h1>
+
+        <div id="solo-name-section" class="mt-small" style="display: none;">
+            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
+        </div>
+
+        <div class="subtitle mt-med mb-small">Number of Questions</div>
+        <div class="flex-row mb-small">
+            <button class="btn" id="count-5" onclick="setCount(5)">5</button>
+            <button class="btn" id="count-10" onclick="setCount(10)">10</button>
+            <button class="btn" id="count-20" onclick="setCount(20)">20</button>
+        </div>
+
+        <div class="subtitle mt-med mb-small">Reveal Answers</div>
+        <div class="flex-row mb-small">
+            <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
+            <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
+        </div>
+        <div class="info-text max-w-300" id="reveal-desc">
+            <!-- text populated by updateMenu -->
+        </div>
+
+        <div class="subtitle mt-med mb-small">Chip Mode</div>
+        <div class="flex-row mb-small">
+            <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
+            <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
+        </div>
+        <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
+
+        <div class="subtitle mt-med m-0">Year Range</div>
+        <div id="year-range-container" class="flex-col-center mt-xsmall">
+            <div id="year-display" class="year-display">
+                ${state.startYear} - ${state.endYear}
+            </div>
+            <div class="slider-wrapper">
+                <div class="slider-track-bg"></div>
+                <div class="slider-track-fill" id="slider-track"></div>
+                <input type="range" id="range-min" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.startYear}" step="1">
+                <input type="range" id="range-max" class="range-input" min="${state.minDbYear}" max="${state.maxDbYear}" value="${state.endYear}" step="1">
+            </div>
+        </div>
+        <div id="year-info" class="info-text mb-small" style="display:none;">Excludes 'Count' questions.</div>
+
+        <div class="mb-med mt-small">
+            <label class="form-label">Quiz Code (Optional)</label>
+            <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
+            <div class="flex-center">
+                <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}">
+                <button class="btn btn-outlined" id="share-code-btn" title="Share Code"><span class="material-symbols-outlined">share</span></button>
+            </div>
+        </div>
+
+        <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
+    `;
+
+    // Handle solo name input
+    const nameInput = div.querySelector('#solo-name-input');
+    if (nameInput) {
+        nameInput.oninput = (e) => {
+            state.soloName = e.target.value;
+        };
+    }
+
+    // Handle Seed Input
+    const seedIn = div.querySelector('#seed-input');
+    seedIn.oninput = (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.seed = isNaN(val) ? null : val;
+    };
+
+    // Handle Year Inputs (Slider)
+    const rangeMin = div.querySelector('#range-min');
+    const rangeMax = div.querySelector('#range-max');
+    const track = div.querySelector('#slider-track');
+    const display = div.querySelector('#year-display');
+
+    const updateSlider = () => {
+        let minVal = parseInt(rangeMin.value, 10);
+        let maxVal = parseInt(rangeMax.value, 10);
+
+        state.startYear = minVal;
+        state.endYear = maxVal;
+
+        display.innerText = `${state.startYear} - ${state.endYear}`;
+
+        const total = state.maxDbYear - state.minDbYear;
+        const safeTotal = total === 0 ? 1 : total;
+        const minPercent = ((state.startYear - state.minDbYear) / safeTotal) * 100;
+        const maxPercent = ((state.endYear - state.minDbYear) / safeTotal) * 100;
+
+        track.style.left = `${minPercent}%`;
+        track.style.width = `${maxPercent - minPercent}%`;
+
+        updateYearInfoVisibility();
+    };
+
+    if (rangeMin && rangeMax) {
+        rangeMin.oninput = () => {
+            if (parseInt(rangeMin.value, 10) > parseInt(rangeMax.value, 10)) {
+                rangeMin.value = rangeMax.value;
+            }
+            updateSlider();
+        };
+
+        rangeMax.oninput = () => {
+            if (parseInt(rangeMax.value, 10) < parseInt(rangeMin.value, 10)) {
+                rangeMax.value = rangeMin.value;
+            }
+            updateSlider();
+        };
+
+        setTimeout(updateSlider, 0);
+    }
+
+    div.querySelector('#share-code-btn').onclick = () => {
+        const code = seedIn.value || 'Random';
+        if (code === 'Random') {
+            showToast("Enter a code first to share!");
+            return;
+        }
+        const url = window.location.href.split('?')[0] + '?code=' + code;
+        const text = `Join my Crackeggs Quiz! Code: ${code}\n${url}`;
+        if (navigator.share) {
+            navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
+        }
+    };
+
+    div.querySelector('#start-btn').onclick = () => {
+        const seedInput = div.querySelector('#seed-input').value;
+        const seed = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 9000) + 1000;
+
+        if (state.mode === 'party') {
+            setState({ view: 'setup', seed: seed });
+        } else {
+            startGame([state.soloName || 'Player 1'], seed);
+        }
+    };
 }
 
 window.setMode = (m) => setState({ mode: m });
@@ -589,34 +593,38 @@ function updateMenu() {
     if (state.menuStep === 1) {
         const btnSolo = document.getElementById('mode-solo');
         const btnParty = document.getElementById('mode-party');
-        if (btnSolo && btnParty) {
+        const modeDesc = document.getElementById('mode-desc');
+        if (btnSolo && btnParty && modeDesc) {
             btnSolo.className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
             btnParty.className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
-            document.getElementById('mode-desc').innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
+            modeDesc.innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
         }
     } else if (state.menuStep === 2) {
         const soloSection = document.getElementById('solo-name-section');
-        if (soloSection) soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
-
         const c5 = document.getElementById('count-5');
-        if (c5) {
-            document.getElementById('count-5').className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
-            document.getElementById('count-10').className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
-            document.getElementById('count-20').className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
+        const c10 = document.getElementById('count-10');
+        const c20 = document.getElementById('count-20');
+        const revealImmediate = document.getElementById('reveal-immediate');
+        const revealEnd = document.getElementById('reveal-end');
+        const revealDesc = document.getElementById('reveal-desc');
+        const btnYes = document.getElementById('chips-yes');
+        const btnNo = document.getElementById('chips-no');
 
-            document.getElementById('reveal-immediate').className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-            document.getElementById('reveal-end').className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-            document.getElementById('reveal-desc').innerText = state.revealAtEnd ?
+        if (soloSection && c5 && c10 && c20 && revealImmediate && revealEnd && revealDesc && btnYes && btnNo) {
+            soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
+
+            c5.className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
+            c10.className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
+            c20.className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
+
+            revealImmediate.className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
+            revealEnd.className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
+            revealDesc.innerText = state.revealAtEnd ?
                 'Correct answers hidden until the very end. Perfect for competitive party play!' :
                 'See the correct answer and points immediately after every question.';
 
-            // Chip Mode Buttons
-            const btnYes = document.getElementById('chips-yes');
-            const btnNo = document.getElementById('chips-no');
-            if (btnYes && btnNo) {
-                btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
-                btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
-            }
+            btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+            btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
 
             updateYearInfoVisibility();
         }
