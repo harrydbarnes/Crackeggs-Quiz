@@ -366,7 +366,7 @@ function renderIntro() {
         <div id="intro-text-container">
             <h1 id="intro-title" class="m-0">Ready to crack eggs?</h1>
         </div>
-        <button class="btn btn-filled" id="intro-btn">Click me</button>
+        <button class="btn btn-filled mt-med" id="intro-btn">Click me</button>
     `;
 
     const btn = div.querySelector('#intro-btn');
@@ -380,7 +380,7 @@ function renderIntro() {
             title.style.opacity = 0;
 
             setTimeout(() => {
-                title.innerText = "No, you're not egging Olli, that was yesterday silly!";
+                title.innerText = "No, you're not egging Olli, that's happened already, silly!";
                 container.style.height = 'auto';
                 const newHeight = container.offsetHeight;
                 container.style.height = `${startHeight}px`;
