@@ -51,6 +51,22 @@ body {
     padding-top: 0;
 }
 
+#intro-text-container {
+    overflow: hidden;
+    transition: height 0.3s ease;
+    margin-top: 30vh;
+}
+
+@media (max-width: 768px) {
+    .view-centered {
+        justify-content: flex-start;
+        padding-top: 40px;
+    }
+    #intro-text-container {
+        margin-top: 0;
+    }
+}
+
 h1 {
     font-size: 2rem;
     color: var(--md-sys-color-primary);

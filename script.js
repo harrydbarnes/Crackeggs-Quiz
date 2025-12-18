@@ -1,6 +1,6 @@
 // State
 const state = {
-    view: 'intro', // intro, menu, setup, game, results, pass
+    view: 'intro', // intro, menu, setup_options, setup, game, results, pass
     mode: 'solo', // solo, party
     questionCount: 5,
     players: [],
@@ -18,7 +18,8 @@ const state = {
     startYear: 2020,
     endYear: 2024,
     minDbYear: 2000,
-    maxDbYear: 2030
+    maxDbYear: 2030,
+    menuStep: 1 // 1: Mode Selection, 2: Options
 };
 
 // Sounds
@@ -29,6 +30,7 @@ const sounds = {
 
 // Track current view to allow smooth updates
 let lastRenderedView = null;
+let lastMenuStep = null;
 
 const STORAGE_KEY = 'crackeggs_quiz_state_v3';
 
@@ -292,12 +294,15 @@ function render() {
     // If view hasn't changed, try to update in-place
     if (state.view === lastRenderedView) {
         if (state.view === 'menu') {
-            updateMenu();
-            return;
+            if (state.menuStep === lastMenuStep) {
+                updateMenu();
+                return;
+            }
         }
     }
 
     lastRenderedView = state.view;
+    lastMenuStep = state.menuStep;
     app.innerHTML = '';
 
     // Global Elements (Top Bar)
@@ -312,9 +317,13 @@ function render() {
         `;
         topBar.querySelector('#back-btn').onclick = () => {
             if (state.view === 'menu') {
-                setState({ view: 'intro' });
+                if (state.menuStep === 2) {
+                    setState({ menuStep: 1 });
+                } else {
+                    setState({ view: 'intro' });
+                }
             } else if (state.view === 'results') {
-                setState({ view: 'menu' });
+                setState({ view: 'menu', menuStep: 1 });
             } else {
                 resetGame();
             }
@@ -328,6 +337,10 @@ function render() {
             break;
         case 'menu':
             app.appendChild(renderMenu());
+            break;
+        case 'setup_options':
+            // Compatibility redirect if state lingers
+            setState({ view: 'menu', menuStep: 2 });
             break;
         case 'setup':
             app.appendChild(renderSetup());
@@ -391,6 +404,18 @@ function renderIntro() {
 function renderMenu() {
     const div = document.createElement('div');
     div.className = 'view';
+
+    if (state.menuStep === 1) {
+        renderMenuStep1(div);
+    } else if (state.menuStep === 2) {
+        renderMenuStep2(div);
+    }
+
+    setTimeout(updateMenu, 0);
+    return div;
+}
+
+function renderMenuStep1(div) {
     div.innerHTML = `
         <h1>Crackeggs Quiz</h1>
 
@@ -403,8 +428,20 @@ function renderMenu() {
             <!-- text populated by updateMenu -->
         </div>
 
+        <button class="btn btn-filled mt-med w-200" id="next-btn">Next</button>
+    `;
+
+    div.querySelector('#next-btn').onclick = () => {
+        setState({ menuStep: 2 });
+    };
+}
+
+function renderMenuStep2(div) {
+    div.innerHTML = `
+        <h1>Game Settings</h1>
+
         <div id="solo-name-section" class="mt-small" style="display: none;">
-             <input type="text" id="solo-name-input" class="input-standard" value="${state.soloName}" placeholder="Your Name">
+            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
         </div>
 
         <div class="subtitle mt-med mb-small">Number of Questions</div>
@@ -416,17 +453,17 @@ function renderMenu() {
 
         <div class="subtitle mt-med mb-small">Reveal Answers</div>
         <div class="flex-row mb-small">
-             <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
-             <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
+            <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
+            <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
         </div>
         <div class="info-text max-w-300" id="reveal-desc">
-             <!-- text populated by updateMenu -->
+            <!-- text populated by updateMenu -->
         </div>
 
         <div class="subtitle mt-med mb-small">Chip Mode</div>
         <div class="flex-row mb-small">
-             <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
-             <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
+            <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
+            <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
         </div>
         <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
 
@@ -445,12 +482,12 @@ function renderMenu() {
         <div id="year-info" class="info-text mb-small" style="display:none;">Excludes 'Count' questions.</div>
 
         <div class="mb-med mt-small">
-             <label class="form-label">Quiz Code (Optional)</label>
-             <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
-             <div class="flex-center">
+            <label class="form-label">Quiz Code (Optional)</label>
+            <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
+            <div class="flex-center">
                 <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}">
                 <button class="btn btn-outlined" id="share-code-btn" title="Share Code"><span class="material-symbols-outlined">share</span></button>
-             </div>
+            </div>
         </div>
 
         <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
@@ -540,10 +577,6 @@ function renderMenu() {
             startGame([state.soloName || 'Player 1'], seed);
         }
     };
-
-    setTimeout(updateMenu, 0);
-
-    return div;
 }
 
 window.setMode = (m) => setState({ mode: m });
@@ -553,32 +586,64 @@ window.setEnableChips = (enabled) => setState({ enableChips: enabled });
 window.setFilterYear = (enabled) => setState({ filterYear: enabled });
 
 function updateMenu() {
-    document.getElementById('mode-solo').className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
-    document.getElementById('mode-party').className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
-    document.getElementById('mode-desc').innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
+    if (state.menuStep === 1) {
+        updateMenuStep1();
+    } else if (state.menuStep === 2) {
+        updateMenuStep2();
+    }
+}
 
+function updateMenuStep1() {
+    updateButtonGroup([
+        { id: 'mode-solo', active: state.mode === 'solo' },
+        { id: 'mode-party', active: state.mode === 'party' }
+    ]);
+
+    const modeDesc = document.getElementById('mode-desc');
+    if (modeDesc) {
+        modeDesc.innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
+    }
+}
+
+function updateMenuStep2() {
     const soloSection = document.getElementById('solo-name-section');
-    if (soloSection) soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
-
-    document.getElementById('count-5').className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
-    document.getElementById('count-10').className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
-    document.getElementById('count-20').className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
-
-    document.getElementById('reveal-immediate').className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-    document.getElementById('reveal-end').className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-    document.getElementById('reveal-desc').innerText = state.revealAtEnd ?
-        'Correct answers hidden until the very end. Perfect for competitive party play!' :
-        'See the correct answer and points immediately after every question.';
-
-    // Chip Mode Buttons
-    const btnYes = document.getElementById('chips-yes');
-    const btnNo = document.getElementById('chips-no');
-    if (btnYes && btnNo) {
-        btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
-        btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+    if (soloSection) {
+        soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
     }
 
+    updateButtonGroup([
+        { id: 'count-5', active: state.questionCount === 5 },
+        { id: 'count-10', active: state.questionCount === 10 },
+        { id: 'count-20', active: state.questionCount === 20 }
+    ]);
+
+    updateButtonGroup([
+        { id: 'reveal-immediate', active: !state.revealAtEnd },
+        { id: 'reveal-end', active: state.revealAtEnd }
+    ]);
+
+    const revealDesc = document.getElementById('reveal-desc');
+    if (revealDesc) {
+        revealDesc.innerText = state.revealAtEnd ?
+            'Correct answers hidden until the very end. Perfect for competitive party play!' :
+            'See the correct answer and points immediately after every question.';
+    }
+
+    updateButtonGroup([
+        { id: 'chips-yes', active: state.enableChips },
+        { id: 'chips-no', active: !state.enableChips }
+    ]);
+
     updateYearInfoVisibility();
+}
+
+function updateButtonGroup(buttons) {
+    buttons.forEach(config => {
+        const btn = document.getElementById(config.id);
+        if (btn) {
+            btn.className = `btn ${config.active ? 'btn-filled' : 'btn-outlined'}`;
+        }
+    });
 }
 
 
