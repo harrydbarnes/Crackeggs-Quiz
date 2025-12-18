@@ -591,44 +591,78 @@ window.setFilterYear = (enabled) => setState({ filterYear: enabled });
 
 function updateMenu() {
     if (state.menuStep === 1) {
-        const btnSolo = document.getElementById('mode-solo');
-        const btnParty = document.getElementById('mode-party');
-        const modeDesc = document.getElementById('mode-desc');
-        if (btnSolo && btnParty && modeDesc) {
-            btnSolo.className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
-            btnParty.className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
-            modeDesc.innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
-        }
+        updateMenuStep1();
     } else if (state.menuStep === 2) {
-        const soloSection = document.getElementById('solo-name-section');
-        const c5 = document.getElementById('count-5');
-        const c10 = document.getElementById('count-10');
-        const c20 = document.getElementById('count-20');
-        const revealImmediate = document.getElementById('reveal-immediate');
-        const revealEnd = document.getElementById('reveal-end');
-        const revealDesc = document.getElementById('reveal-desc');
-        const btnYes = document.getElementById('chips-yes');
-        const btnNo = document.getElementById('chips-no');
-
-        if (soloSection && c5 && c10 && c20 && revealImmediate && revealEnd && revealDesc && btnYes && btnNo) {
-            soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
-
-            c5.className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
-            c10.className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
-            c20.className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
-
-            revealImmediate.className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-            revealEnd.className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-            revealDesc.innerText = state.revealAtEnd ?
-                'Correct answers hidden until the very end. Perfect for competitive party play!' :
-                'See the correct answer and points immediately after every question.';
-
-            btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
-            btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
-
-            updateYearInfoVisibility();
-        }
+        updateMenuStep2();
     }
+}
+
+function updateMenuStep1() {
+    const btnSolo = document.getElementById('mode-solo');
+    if (btnSolo) {
+        btnSolo.className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const btnParty = document.getElementById('mode-party');
+    if (btnParty) {
+        btnParty.className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const modeDesc = document.getElementById('mode-desc');
+    if (modeDesc) {
+        modeDesc.innerText = state.mode === 'solo' ? 'Play by yourself.' : 'Local multiplayer. Pass the phone to the next player after your turn.';
+    }
+}
+
+function updateMenuStep2() {
+    const soloSection = document.getElementById('solo-name-section');
+    if (soloSection) {
+        soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
+    }
+
+    const c5 = document.getElementById('count-5');
+    if (c5) {
+        c5.className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const c10 = document.getElementById('count-10');
+    if (c10) {
+        c10.className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const c20 = document.getElementById('count-20');
+    if (c20) {
+        c20.className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const revealImmediate = document.getElementById('reveal-immediate');
+    if (revealImmediate) {
+        revealImmediate.className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const revealEnd = document.getElementById('reveal-end');
+    if (revealEnd) {
+        revealEnd.className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const revealDesc = document.getElementById('reveal-desc');
+    if (revealDesc) {
+        revealDesc.innerText = state.revealAtEnd ?
+            'Correct answers hidden until the very end. Perfect for competitive party play!' :
+            'See the correct answer and points immediately after every question.';
+    }
+
+    const btnYes = document.getElementById('chips-yes');
+    if (btnYes) {
+        btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    const btnNo = document.getElementById('chips-no');
+    if (btnNo) {
+        btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
+    }
+
+    updateYearInfoVisibility();
 }
 
 
