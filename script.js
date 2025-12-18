@@ -298,10 +298,6 @@ function render() {
                 updateMenu();
                 return;
             }
-        } else if (state.view === 'setup_options') {
-            // Deprecated view, redirects handled in render loop usually,
-            // but if we are here, we should just update.
-            // However, we are removing setup_options.
         }
     }
 
@@ -598,15 +594,10 @@ function updateMenu() {
 }
 
 function updateMenuStep1() {
-    const btnSolo = document.getElementById('mode-solo');
-    if (btnSolo) {
-        btnSolo.className = `btn ${state.mode === 'solo' ? 'btn-filled' : 'btn-outlined'}`;
-    }
-
-    const btnParty = document.getElementById('mode-party');
-    if (btnParty) {
-        btnParty.className = `btn ${state.mode === 'party' ? 'btn-filled' : 'btn-outlined'}`;
-    }
+    updateButtonGroup([
+        { id: 'mode-solo', active: state.mode === 'solo' },
+        { id: 'mode-party', active: state.mode === 'party' }
+    ]);
 
     const modeDesc = document.getElementById('mode-desc');
     if (modeDesc) {
@@ -620,30 +611,16 @@ function updateMenuStep2() {
         soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
     }
 
-    const c5 = document.getElementById('count-5');
-    if (c5) {
-        c5.className = `btn ${state.questionCount === 5 ? 'btn-filled' : 'btn-outlined'}`;
-    }
+    updateButtonGroup([
+        { id: 'count-5', active: state.questionCount === 5 },
+        { id: 'count-10', active: state.questionCount === 10 },
+        { id: 'count-20', active: state.questionCount === 20 }
+    ]);
 
-    const c10 = document.getElementById('count-10');
-    if (c10) {
-        c10.className = `btn ${state.questionCount === 10 ? 'btn-filled' : 'btn-outlined'}`;
-    }
-
-    const c20 = document.getElementById('count-20');
-    if (c20) {
-        c20.className = `btn ${state.questionCount === 20 ? 'btn-filled' : 'btn-outlined'}`;
-    }
-
-    const revealImmediate = document.getElementById('reveal-immediate');
-    if (revealImmediate) {
-        revealImmediate.className = `btn ${!state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-    }
-
-    const revealEnd = document.getElementById('reveal-end');
-    if (revealEnd) {
-        revealEnd.className = `btn ${state.revealAtEnd ? 'btn-filled' : 'btn-outlined'}`;
-    }
+    updateButtonGroup([
+        { id: 'reveal-immediate', active: !state.revealAtEnd },
+        { id: 'reveal-end', active: state.revealAtEnd }
+    ]);
 
     const revealDesc = document.getElementById('reveal-desc');
     if (revealDesc) {
@@ -652,17 +629,21 @@ function updateMenuStep2() {
             'See the correct answer and points immediately after every question.';
     }
 
-    const btnYes = document.getElementById('chips-yes');
-    if (btnYes) {
-        btnYes.className = `btn ${state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
-    }
-
-    const btnNo = document.getElementById('chips-no');
-    if (btnNo) {
-        btnNo.className = `btn ${!state.enableChips ? 'btn-filled' : 'btn-outlined'}`;
-    }
+    updateButtonGroup([
+        { id: 'chips-yes', active: state.enableChips },
+        { id: 'chips-no', active: !state.enableChips }
+    ]);
 
     updateYearInfoVisibility();
+}
+
+function updateButtonGroup(buttons) {
+    buttons.forEach(config => {
+        const btn = document.getElementById(config.id);
+        if (btn) {
+            btn.className = `btn ${config.active ? 'btn-filled' : 'btn-outlined'}`;
+        }
+    });
 }
 
 
