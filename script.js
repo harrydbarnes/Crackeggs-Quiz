@@ -432,7 +432,7 @@ function renderMenuStep1(div) {
     `;
 
     div.querySelector('#next-btn').onclick = () => {
-         setState({ menuStep: 2 });
+        setState({ menuStep: 2 });
     };
 }
 
