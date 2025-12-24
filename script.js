@@ -227,10 +227,21 @@ function loadState() {
 
 // --- App Logic ---
 
-function init() {
-    createUIContainers();
+function loadQuestions() {
+    const script = document.createElement('script');
+    script.src = 'questions.js';
+    script.onload = () => {
+        processQuestionsData();
+    };
+    script.onerror = () => {
+        showToast("Failed to load questions!");
+    };
+    document.body.appendChild(script);
+}
 
-    // Determine DB Year Range
+function processQuestionsData() {
+    if (!window.QUESTION_DATABASE) return;
+
     const years = window.QUESTION_DATABASE
         .map(q => q.year)
         .filter(y => y !== null && y !== undefined);
@@ -238,12 +249,30 @@ function init() {
     if (years.length > 0) {
         state.minDbYear = Math.min(...years);
         state.maxDbYear = Math.max(...years);
-        // Set defaults if not loaded from state (loadState will override if exists, but we want valid bounds)
-        state.startYear = state.minDbYear;
-        state.endYear = state.maxDbYear;
+
+        // If state wasn't loaded (or we want to default to full range if not explicitly set by user interaction previously)
+        // We check if we should expand to full range.
+        // Simple heuristic: If startYear/endYear match the HARDCODED defaults (2020/2024), we update them to full range.
+        if (state.startYear === 2020 && state.endYear === 2024) {
+            state.startYear = state.minDbYear;
+            state.endYear = state.maxDbYear;
+        } else {
+            // Clamp
+            if (state.startYear < state.minDbYear) state.startYear = state.minDbYear;
+            if (state.endYear > state.maxDbYear) state.endYear = state.maxDbYear;
+        }
     }
 
+    // Refresh view if needed (e.g. year slider)
+    if (state.view === 'menu' && state.menuStep === 2) {
+        render();
+    }
+}
+
+function init() {
+    createUIContainers();
     loadState();
+    loadQuestions();
 
     // Check URL for code
     const params = new URLSearchParams(window.location.search);
@@ -693,6 +722,10 @@ function renderSetup() {
 }
 
 function startGame(players, seed) {
+    if (!window.QUESTION_DATABASE) {
+        showToast("Questions still loading... please wait.");
+        return;
+    }
     const rng = new Random(seed);
     let pool = [...window.QUESTION_DATABASE];
 
