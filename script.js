@@ -485,7 +485,7 @@ function renderMenuStep2(div) {
             <label class="form-label">Quiz Code (Optional)</label>
             <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
             <div class="flex-center">
-            <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}" aria-label="Quiz Code Seed">
+            <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}" aria-label="Quiz Code (Optional)">
             <button class="btn btn-outlined" id="share-code-btn" title="Share Code" aria-label="Share Quiz Code"><span class="material-symbols-outlined">share</span></button>
             </div>
         </div>
