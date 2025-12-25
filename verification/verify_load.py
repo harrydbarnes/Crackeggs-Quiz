@@ -20,8 +20,8 @@ def run():
         # Click Intro Button to go to Menu
         page.click('#intro-btn')
 
-        # Wait for transition
-        page.wait_for_timeout(1000)
+        # Wait for the menu to appear by waiting for a specific element
+        page.wait_for_selector('#next-btn')
 
         # Click Next (Intro Step 2)
         if page.locator('#intro-btn').inner_text() == "Let's Play":
