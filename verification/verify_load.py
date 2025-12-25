@@ -41,9 +41,12 @@ def run():
         page.click('#next-btn') # To Options
         page.wait_for_timeout(500)
 
-        # In Options, verify Year Slider values are not defaults if loaded
-        # Default minDbYear is 2000. Real data has 2021+.
-        # We can check the text or attribute.
+        # In Options, verify Year Slider values are updated from defaults.
+        # We wait for the async questions.js to load and update the DOM.
+        page.wait_for_function("document.querySelector('#range-min').getAttribute('min') !== '2000'")
+        min_slider_min_attr = page.locator('#range-min').get_attribute('min')
+        assert min_slider_min_attr != '2000'
+        print(f"Verified year slider min has been updated to {min_slider_min_attr}")
 
         page.screenshot(path='verification/3_options.png')
         print('Screenshot 3 taken: Options')
