@@ -339,7 +339,7 @@ function render() {
         const topBar = document.createElement('div');
         topBar.className = 'top-bar';
         topBar.innerHTML = `
-            <button class="icon-btn material-symbols-outlined" id="back-btn">arrow_back</button>
+            <button class="icon-btn material-symbols-outlined" id="back-btn" aria-label="Go Back">arrow_back</button>
             <span id="header-code" class="header-code">
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
@@ -470,7 +470,7 @@ function renderMenuStep2(div) {
         <h1>Game Settings</h1>
 
         <div id="solo-name-section" class="mt-small" style="display: none;">
-            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
+            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name" aria-label="Your Name">
         </div>
 
         <div class="subtitle mt-med mb-small">Number of Questions</div>
@@ -514,8 +514,8 @@ function renderMenuStep2(div) {
             <label class="form-label">Quiz Code (Optional)</label>
             <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
             <div class="flex-center">
-                <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}">
-                <button class="btn btn-outlined" id="share-code-btn" title="Share Code"><span class="material-symbols-outlined">share</span></button>
+            <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}" aria-label="Quiz Code (Optional)">
+            <button class="btn btn-outlined" id="share-code-btn" title="Share Code" aria-label="Share Quiz Code"><span class="material-symbols-outlined">share</span></button>
             </div>
         </div>
 
@@ -699,6 +699,7 @@ function renderSetup() {
         input.type = 'text';
         input.className = 'player-input input-player';
         input.placeholder = `Player ${list.children.length + 1}`;
+        input.setAttribute('aria-label', `Player ${list.children.length + 1} Name`);
         wrap.appendChild(input);
         list.appendChild(wrap);
     };
@@ -1002,7 +1003,7 @@ function renderGame() {
     let content = `<div class="question-text">
         ${escapeHTML(question.question).replace(/\n/g, '<br>')}
         ${question.dateDisplay ?
-          `<button class="icon-btn material-symbols-outlined show-date-btn" id="show-date-btn" title="Show Date">calendar_month</button>`
+          `<button class="icon-btn material-symbols-outlined show-date-btn" id="show-date-btn" title="Show Date" aria-label="Show Date">calendar_month</button>`
           : ''}
     </div>`;
 
