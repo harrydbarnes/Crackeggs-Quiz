@@ -475,7 +475,7 @@ function renderMenuStep2(div) {
 
         <div id="solo-name-section" class="mt-small" style="display: none;">
             <label class="subtitle mb-small" for="solo-name-input">What should we call you?</label>
-            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name" aria-label="Your Name">
+            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
         </div>
 
         <div class="subtitle mt-med mb-small">Number of Questions</div>
@@ -1167,8 +1167,7 @@ function submitAnswer(qId, answer) {
 
     setTimeout(() => {
         if (state.currentQuestionIndex < state.questions.length - 1) {
-            state.currentQuestionIndex++;
-            render();
+            setState({ currentQuestionIndex: state.currentQuestionIndex + 1 });
             // Apply slide-in to the new view
             const newView = app.querySelector('.view');
             if (newView) {
@@ -1177,9 +1176,11 @@ function submitAnswer(qId, answer) {
             }
         } else {
             if (state.currentPlayerIndex < state.players.length - 1) {
-                state.currentPlayerIndex++;
-                state.currentQuestionIndex = 0;
-                setState({ view: 'pass' });
+                setState({
+                    currentPlayerIndex: state.currentPlayerIndex + 1,
+                    currentQuestionIndex: 0,
+                    view: 'pass'
+                });
             } else {
                 calculateScores();
                 setState({ view: 'results' });
