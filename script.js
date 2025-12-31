@@ -409,7 +409,7 @@ function renderIntro() {
             title.style.opacity = 0;
 
             setTimeout(() => {
-                title.innerText = "No, you're not egging Olli, that's happened already, silly!";
+                title.innerText = "No, you're not egging Olli, that happened last year, silly!";
                 container.style.height = 'auto';
                 const newHeight = container.offsetHeight;
                 container.style.height = `${startHeight}px`;
@@ -470,6 +470,7 @@ function renderMenuStep2(div) {
         <h1>Game Settings</h1>
 
         <div id="solo-name-section" class="mt-small" style="display: none;">
+            <div class="subtitle mb-small">What should we call you?</div>
             <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name" aria-label="Your Name">
         </div>
 
@@ -810,7 +811,10 @@ function renderGame() {
     const chips = state.playerChips[player];
 
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
+
+    // Auto scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     const header = document.createElement('div');
     header.className = 'flex-justify-between w-100 mb-med';
@@ -1003,7 +1007,7 @@ function renderGame() {
     let content = `<div class="question-text">
         ${escapeHTML(question.question).replace(/\n/g, '<br>')}
         ${question.dateDisplay ?
-          `<button class="icon-btn material-symbols-outlined show-date-btn" id="show-date-btn" title="Show Date" aria-label="Show Date">calendar_month</button>`
+          `<div style="font-size: 0.8rem; color: var(--md-sys-color-outline); margin-top: 5px;">${escapeHTML(question.dateDisplay)}</div>`
           : ''}
     </div>`;
 
@@ -1032,13 +1036,8 @@ function renderGame() {
     card.innerHTML = content;
     div.appendChild(card);
 
-    const dateBtn = card.querySelector('#show-date-btn');
-    if (dateBtn) {
-        dateBtn.onclick = () => showToast("Date: " + question.dateDisplay);
-    }
-
     const feedback = document.createElement('div');
-    feedback.className = 'feedback text-center mt-small';
+    feedback.className = 'feedback text-center mt-small reveal-smooth';
     div.appendChild(feedback);
 
     // Add Next Button (Hidden initially)
@@ -1092,6 +1091,7 @@ function renderGame() {
         }
 
         nextBtn.classList.remove('hidden');
+        nextBtn.classList.add('reveal-smooth');
         nextBtn.onclick = () => {
             submitAnswer(question.id, currentAnswer);
         };
@@ -1143,19 +1143,30 @@ function submitAnswer(qId, answer) {
     const player = state.players[state.currentPlayerIndex];
     state.answers[player][qId] = answer;
 
-    if (state.currentQuestionIndex < state.questions.length - 1) {
-        state.currentQuestionIndex++;
-        render();
-    } else {
-        if (state.currentPlayerIndex < state.players.length - 1) {
-            state.currentPlayerIndex++;
-            state.currentQuestionIndex = 0;
-            setState({ view: 'pass' });
-        } else {
-            calculateScores();
-            setState({ view: 'results' });
-        }
+    const app = document.getElementById('app');
+    const currentView = app.querySelector('.view');
+    if (currentView) {
+        currentView.classList.add('slide-out-left');
     }
+
+    setTimeout(() => {
+        if (state.currentQuestionIndex < state.questions.length - 1) {
+            state.currentQuestionIndex++;
+            render();
+            // Apply slide-in to the new view
+            const newView = app.querySelector('.view');
+            if (newView) newView.classList.add('slide-in-right');
+        } else {
+            if (state.currentPlayerIndex < state.players.length - 1) {
+                state.currentPlayerIndex++;
+                state.currentQuestionIndex = 0;
+                setState({ view: 'pass' });
+            } else {
+                calculateScores();
+                setState({ view: 'results' });
+            }
+        }
+    }, 300);
 }
 
 function calculateScores() {
@@ -1221,6 +1232,7 @@ function renderResults() {
         document.body.appendChild(overlay);
 
         setTimeout(() => {
+            sounds.drum.pause(); // Stop drum roll when revealing
             document.body.removeChild(overlay);
 
             // Start reveal
@@ -1270,7 +1282,7 @@ function renderResults() {
 
     shareBtn.onclick = () => {
         let text = `Crackeggs Quiz Results (Code: ${state.seed})\n`;
-        sortedPlayers.forEach((p, idx) => {
+        sortedPlayers.filter(p => p && p.trim()).forEach((p, idx) => {
             text += `${idx + 1}. ${p}: ${state.scores[p]} pts\n`;
         });
 
