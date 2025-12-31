@@ -450,8 +450,8 @@ function renderMenuStep1(div) {
 
         <div class="subtitle mb-small">Select Game Mode</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
-            <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
+            <button class="btn" id="mode-solo">Solo Run</button>
+            <button class="btn" id="mode-party">Party Mode</button>
         </div>
         <div class="info-text" id="mode-desc">
             <!-- text populated by updateMenu -->
@@ -459,6 +459,10 @@ function renderMenuStep1(div) {
 
         <button class="btn btn-filled mt-med w-200" id="next-btn">Next</button>
     `;
+
+    // Attach listeners
+    div.querySelector('#mode-solo').onclick = () => setState({ mode: 'solo' });
+    div.querySelector('#mode-party').onclick = () => setState({ mode: 'party' });
 
     div.querySelector('#next-btn').onclick = () => {
         setState({ menuStep: 2 });
@@ -470,21 +474,21 @@ function renderMenuStep2(div) {
         <h1>Game Settings</h1>
 
         <div id="solo-name-section" class="mt-small" style="display: none;">
-            <div class="subtitle mb-small">What should we call you?</div>
+            <label class="subtitle mb-small" for="solo-name-input">What should we call you?</label>
             <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name" aria-label="Your Name">
         </div>
 
         <div class="subtitle mt-med mb-small">Number of Questions</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="count-5" onclick="setCount(5)">5</button>
-            <button class="btn" id="count-10" onclick="setCount(10)">10</button>
-            <button class="btn" id="count-20" onclick="setCount(20)">20</button>
+            <button class="btn" id="count-5">5</button>
+            <button class="btn" id="count-10">10</button>
+            <button class="btn" id="count-20">20</button>
         </div>
 
         <div class="subtitle mt-med mb-small">Reveal Answers</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
-            <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
+            <button class="btn" id="reveal-immediate">Immediately</button>
+            <button class="btn" id="reveal-end">At End</button>
         </div>
         <div class="info-text max-w-300" id="reveal-desc">
             <!-- text populated by updateMenu -->
@@ -492,8 +496,8 @@ function renderMenuStep2(div) {
 
         <div class="subtitle mt-med mb-small">Chip Mode</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
-            <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
+            <button class="btn" id="chips-yes">Yes</button>
+            <button class="btn" id="chips-no">No</button>
         </div>
         <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
 
@@ -522,6 +526,17 @@ function renderMenuStep2(div) {
 
         <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
     `;
+
+    // Attach listeners for settings
+    div.querySelector('#count-5').onclick = () => setState({ questionCount: 5 });
+    div.querySelector('#count-10').onclick = () => setState({ questionCount: 10 });
+    div.querySelector('#count-20').onclick = () => setState({ questionCount: 20 });
+
+    div.querySelector('#reveal-immediate').onclick = () => setState({ revealAtEnd: false });
+    div.querySelector('#reveal-end').onclick = () => setState({ revealAtEnd: true });
+
+    div.querySelector('#chips-yes').onclick = () => setState({ enableChips: true });
+    div.querySelector('#chips-no').onclick = () => setState({ enableChips: false });
 
     // Handle solo name input
     const nameInput = div.querySelector('#solo-name-input');
@@ -604,11 +619,12 @@ function renderMenuStep2(div) {
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
         } else {
-            startGame([state.soloName || 'Player 1'], seed);
+            startGame([(state.soloName.trim()) || 'Player 1'], seed);
         }
     };
 }
 
+// Global functions no longer needed for HTML onclicks, but kept if needed for console debugging or extensions
 window.setMode = (m) => setState({ mode: m });
 window.setCount = (n) => setState({ questionCount: n });
 window.setReveal = (atEnd) => setState({ revealAtEnd: atEnd });
@@ -1007,7 +1023,7 @@ function renderGame() {
     let content = `<div class="question-text">
         ${escapeHTML(question.question).replace(/\n/g, '<br>')}
         ${question.dateDisplay ?
-          `<div style="font-size: 0.8rem; color: var(--md-sys-color-outline); margin-top: 5px;">${escapeHTML(question.dateDisplay)}</div>`
+          `<div class="question-date">${escapeHTML(question.dateDisplay)}</div>`
           : ''}
     </div>`;
 
@@ -1037,7 +1053,7 @@ function renderGame() {
     div.appendChild(card);
 
     const feedback = document.createElement('div');
-    feedback.className = 'feedback text-center mt-small reveal-smooth';
+    feedback.className = 'feedback text-center mt-small fade-in';
     div.appendChild(feedback);
 
     // Add Next Button (Hidden initially)
@@ -1091,7 +1107,7 @@ function renderGame() {
         }
 
         nextBtn.classList.remove('hidden');
-        nextBtn.classList.add('reveal-smooth');
+        nextBtn.classList.add('fade-in');
         nextBtn.onclick = () => {
             submitAnswer(question.id, currentAnswer);
         };
@@ -1155,7 +1171,10 @@ function submitAnswer(qId, answer) {
             render();
             // Apply slide-in to the new view
             const newView = app.querySelector('.view');
-            if (newView) newView.classList.add('slide-in-right');
+            if (newView) {
+                newView.classList.remove('fade-in');
+                newView.classList.add('slide-in-right');
+            }
         } else {
             if (state.currentPlayerIndex < state.players.length - 1) {
                 state.currentPlayerIndex++;
@@ -1167,18 +1186,6 @@ function submitAnswer(qId, answer) {
             }
         }
     }, 300);
-}
-
-function calculateScores() {
-    state.scores = {};
-    state.players.forEach(p => {
-        let score = 0;
-        state.questions.forEach(q => {
-            const ans = state.answers[p][q.id];
-            score += calculatePoints(q, ans);
-        });
-        state.scores[p] = score;
-    });
 }
 
 function renderResults() {
