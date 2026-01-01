@@ -67,9 +67,10 @@ def verify_changes():
         # Step 2: Name input - verify persistence (Test part 2)
         try:
             page.get_by_label("What should we call you?").fill("TestPlayer")
-        except:
+        except Exception as e:
              print("Could not find name input. Dumping content:")
              print(page.inner_html("#app"))
+             print(e)
              return
 
         # We need to ensure the oninput event fired and saved state.
