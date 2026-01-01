@@ -391,7 +391,7 @@ function render() {
             <span id="header-code" class="header-code">
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
-            <div style="display: flex; align-items: center;">
+            <div class="top-bar-actions">
                 <button class="icon-btn material-symbols-outlined" id="mute-btn" aria-label="Toggle Sound">${muteIcon}</button>
                 ${(state.view === 'game' || state.view === 'results') ? '<button class="icon-btn material-symbols-outlined" id="share-game-btn" aria-label="Share Game">share</button>' : ''}
             </div>
