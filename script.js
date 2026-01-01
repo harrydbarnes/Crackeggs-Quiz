@@ -113,10 +113,10 @@ function showModal(title, content, actions = []) {
             // Overrides
             btn.innerText = action.text;
             btn.style.marginLeft = '8px';
-            btn.onclick = () => {
+            btn.addEventListener('click', () => {
                 closeModal();
                 resolve(action.value);
-            };
+            });
             mActions.appendChild(btn);
         });
 
@@ -252,7 +252,6 @@ function processQuestionsData() {
 
         // If state wasn't loaded (or we want to default to full range if not explicitly set by user interaction previously)
         // We check if we should expand to full range.
-        // Simple heuristic: If startYear/endYear match the HARDCODED defaults (2020/2024), we update them to full range.
         if (state.startYear === 2020 && state.endYear === 2024) {
             state.startYear = state.minDbYear;
             state.endYear = state.maxDbYear;
@@ -344,7 +343,7 @@ function render() {
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
         `;
-        topBar.querySelector('#back-btn').onclick = () => {
+        topBar.querySelector('#back-btn').addEventListener('click', () => {
             if (state.view === 'menu') {
                 if (state.menuStep === 2) {
                     setState({ menuStep: 1 });
@@ -356,7 +355,7 @@ function render() {
             } else {
                 resetGame();
             }
-        };
+        });
         app.appendChild(topBar);
     }
 
@@ -402,14 +401,14 @@ function renderIntro() {
     const title = div.querySelector('#intro-title');
     const container = div.querySelector('#intro-text-container');
 
-    btn.onclick = () => {
+    btn.addEventListener('click', () => {
         if (btn.innerText === "Click me") {
             const startHeight = container.offsetHeight;
             container.style.height = `${startHeight}px`;
             title.style.opacity = 0;
 
             setTimeout(() => {
-                title.innerText = "No, you're not egging Olli, that's happened already, silly!";
+                title.innerText = "No, you're not egging Olli, that happened last year, silly!";
                 container.style.height = 'auto';
                 const newHeight = container.offsetHeight;
                 container.style.height = `${startHeight}px`;
@@ -425,7 +424,7 @@ function renderIntro() {
             div.classList.add('fade-out');
             setTimeout(() => setState({ view: 'menu' }), 300);
         }
-    };
+    });
 
     return div;
 }
@@ -450,8 +449,8 @@ function renderMenuStep1(div) {
 
         <div class="subtitle mb-small">Select Game Mode</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="mode-solo" onclick="setMode('solo')">Solo Run</button>
-            <button class="btn" id="mode-party" onclick="setMode('party')">Party Mode</button>
+            <button class="btn" id="mode-solo">Solo Run</button>
+            <button class="btn" id="mode-party">Party Mode</button>
         </div>
         <div class="info-text" id="mode-desc">
             <!-- text populated by updateMenu -->
@@ -460,9 +459,13 @@ function renderMenuStep1(div) {
         <button class="btn btn-filled mt-med w-200" id="next-btn">Next</button>
     `;
 
-    div.querySelector('#next-btn').onclick = () => {
+    // Attach listeners
+    div.querySelector('#mode-solo').addEventListener('click', () => setState({ mode: 'solo' }));
+    div.querySelector('#mode-party').addEventListener('click', () => setState({ mode: 'party' }));
+
+    div.querySelector('#next-btn').addEventListener('click', () => {
         setState({ menuStep: 2 });
-    };
+    });
 }
 
 function renderMenuStep2(div) {
@@ -470,20 +473,21 @@ function renderMenuStep2(div) {
         <h1>Game Settings</h1>
 
         <div id="solo-name-section" class="mt-small" style="display: none;">
-            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name" aria-label="Your Name">
+            <label class="subtitle mb-small" for="solo-name-input">What should we call you?</label>
+            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
         </div>
 
         <div class="subtitle mt-med mb-small">Number of Questions</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="count-5" onclick="setCount(5)">5</button>
-            <button class="btn" id="count-10" onclick="setCount(10)">10</button>
-            <button class="btn" id="count-20" onclick="setCount(20)">20</button>
+            <button class="btn" id="count-5">5</button>
+            <button class="btn" id="count-10">10</button>
+            <button class="btn" id="count-20">20</button>
         </div>
 
         <div class="subtitle mt-med mb-small">Reveal Answers</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="reveal-immediate" onclick="setReveal(false)">Immediately</button>
-            <button class="btn" id="reveal-end" onclick="setReveal(true)">At End</button>
+            <button class="btn" id="reveal-immediate">Immediately</button>
+            <button class="btn" id="reveal-end">At End</button>
         </div>
         <div class="info-text max-w-300" id="reveal-desc">
             <!-- text populated by updateMenu -->
@@ -491,8 +495,8 @@ function renderMenuStep2(div) {
 
         <div class="subtitle mt-med mb-small">Chip Mode</div>
         <div class="flex-row mb-small">
-            <button class="btn" id="chips-yes" onclick="setEnableChips(true)">Yes</button>
-            <button class="btn" id="chips-no" onclick="setEnableChips(false)">No</button>
+            <button class="btn" id="chips-yes">Yes</button>
+            <button class="btn" id="chips-no">No</button>
         </div>
         <div class="info-text">50/50, Range Reducer, Ask Audience, Context</div>
 
@@ -521,6 +525,17 @@ function renderMenuStep2(div) {
 
         <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
     `;
+
+    // Attach listeners for settings
+    div.querySelector('#count-5').addEventListener('click', () => setState({ questionCount: 5 }));
+    div.querySelector('#count-10').addEventListener('click', () => setState({ questionCount: 10 }));
+    div.querySelector('#count-20').addEventListener('click', () => setState({ questionCount: 20 }));
+
+    div.querySelector('#reveal-immediate').addEventListener('click', () => setState({ revealAtEnd: false }));
+    div.querySelector('#reveal-end').addEventListener('click', () => setState({ revealAtEnd: true }));
+
+    div.querySelector('#chips-yes').addEventListener('click', () => setState({ enableChips: true }));
+    div.querySelector('#chips-no').addEventListener('click', () => setState({ enableChips: false }));
 
     // Handle solo name input
     const nameInput = div.querySelector('#solo-name-input');
@@ -581,7 +596,7 @@ function renderMenuStep2(div) {
         setTimeout(updateSlider, 0);
     }
 
-    div.querySelector('#share-code-btn').onclick = () => {
+    div.querySelector('#share-code-btn').addEventListener('click', () => {
         const code = seedIn.value || 'Random';
         if (code === 'Random') {
             showToast("Enter a code first to share!");
@@ -594,20 +609,21 @@ function renderMenuStep2(div) {
         } else {
             navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
         }
-    };
+    });
 
-    div.querySelector('#start-btn').onclick = () => {
+    div.querySelector('#start-btn').addEventListener('click', () => {
         const seedInput = div.querySelector('#seed-input').value;
         const seed = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 9000) + 1000;
 
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
         } else {
-            startGame([state.soloName || 'Player 1'], seed);
+            startGame([(state.soloName.trim()) || 'Player 1'], seed);
         }
-    };
+    });
 }
 
+// Global functions no longer needed for HTML onclicks, but kept if needed for console debugging or extensions
 window.setMode = (m) => setState({ mode: m });
 window.setCount = (n) => setState({ questionCount: n });
 window.setReveal = (atEnd) => setState({ revealAtEnd: atEnd });
@@ -707,9 +723,9 @@ function renderSetup() {
     addInput();
     addInput();
 
-    addBtn.onclick = addInput;
+    addBtn.addEventListener('click', addInput);
 
-    div.querySelector('#start-party').onclick = () => {
+    div.querySelector('#start-party').addEventListener('click', () => {
         const inputs = div.querySelectorAll('.player-input');
         const players = Array.from(inputs).map(i => i.value.trim()).filter(v => v);
         if (players.length < 1) {
@@ -717,7 +733,7 @@ function renderSetup() {
             return;
         }
         startGame(players, state.seed);
-    };
+    });
 
     return div;
 }
@@ -797,9 +813,9 @@ function renderPassScreen() {
         <button class="btn btn-white-primary" id="ready-btn">I am Ready</button>
     `;
 
-    div.querySelector('#ready-btn').onclick = () => {
+    div.querySelector('#ready-btn').addEventListener('click', () => {
         setState({ view: 'game' });
-    };
+    });
 
     return div;
 }
@@ -810,7 +826,10 @@ function renderGame() {
     const chips = state.playerChips[player];
 
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
+
+    // Auto scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     const header = document.createElement('div');
     header.className = 'flex-justify-between w-100 mb-med';
@@ -856,7 +875,7 @@ function renderGame() {
         div.appendChild(chipsDiv);
 
         // Handlers
-        btnContext.onclick = () => {
+        btnContext.addEventListener('click', () => {
              showModal("Context", question.context.join('\n\n'), [
                  { text: "Close", primary: true, value: true }
              ]).then(() => {
@@ -864,9 +883,9 @@ function renderGame() {
                  btnContext.disabled = true;
                  saveState();
              });
-        };
+        });
 
-        btn5050.onclick = () => {
+        btn5050.addEventListener('click', () => {
             showModal("Use 50/50 Chip?", "This will remove 2 incorrect options.", [
                 { text: "Cancel", primary: false, value: false },
                 { text: "Use Chip", primary: true, value: true }
@@ -894,9 +913,9 @@ function renderGame() {
                     saveState();
                 }
             });
-        };
+        });
 
-        btnRange.onclick = () => {
+        btnRange.addEventListener('click', () => {
              showModal("Use Range Chip?", "This will reduce the slider range to 20%.", [
                  { text: "Cancel", primary: false, value: false },
                  { text: "Use Chip", primary: true, value: true }
@@ -932,9 +951,9 @@ function renderGame() {
                      saveState();
                  }
              });
-        };
+        });
 
-        btnAudience.onclick = () => {
+        btnAudience.addEventListener('click', () => {
              showModal("Ask the Audience?", "See what the (virtual) audience thinks.", [
                  { text: "Cancel", primary: false, value: false },
                  { text: "Ask", primary: true, value: true }
@@ -994,7 +1013,7 @@ function renderGame() {
                      saveState();
                  }
              });
-        };
+        });
     }
 
     const card = document.createElement('div');
@@ -1003,7 +1022,7 @@ function renderGame() {
     let content = `<div class="question-text">
         ${escapeHTML(question.question).replace(/\n/g, '<br>')}
         ${question.dateDisplay ?
-          `<button class="icon-btn material-symbols-outlined show-date-btn" id="show-date-btn" title="Show Date" aria-label="Show Date">calendar_month</button>`
+          `<div class="question-date">${escapeHTML(question.dateDisplay)}</div>`
           : ''}
     </div>`;
 
@@ -1032,13 +1051,8 @@ function renderGame() {
     card.innerHTML = content;
     div.appendChild(card);
 
-    const dateBtn = card.querySelector('#show-date-btn');
-    if (dateBtn) {
-        dateBtn.onclick = () => showToast("Date: " + question.dateDisplay);
-    }
-
     const feedback = document.createElement('div');
-    feedback.className = 'feedback text-center mt-small';
+    feedback.className = 'feedback text-center mt-small fade-in';
     div.appendChild(feedback);
 
     // Add Next Button (Hidden initially)
@@ -1092,15 +1106,16 @@ function renderGame() {
         }
 
         nextBtn.classList.remove('hidden');
-        nextBtn.onclick = () => {
+        nextBtn.classList.add('fade-in');
+        nextBtn.addEventListener('click', () => {
             submitAnswer(question.id, currentAnswer);
-        };
+        });
     };
 
     if (question.type === 'who_said_it') {
         const opts = card.querySelectorAll('.option-btn');
         opts.forEach(btn => {
-            btn.onclick = () => {
+            btn.addEventListener('click', () => {
                 const chosen = btn.dataset.value;
                 const isCorrect = chosen === question.correctAnswer;
 
@@ -1120,7 +1135,7 @@ function renderGame() {
                     }
                 }
                 handleAnswer(chosen);
-            };
+            });
         });
     } else {
         const slider = card.querySelector('#slider-input');
@@ -1131,9 +1146,9 @@ function renderGame() {
             valDisplay.innerText = question.type === 'when' ? formatDate(parseInt(slider.value, 10)) : slider.value;
         };
 
-        subBtn.onclick = () => {
+        subBtn.addEventListener('click', () => {
             handleAnswer(parseInt(slider.value, 10));
-        };
+        });
     }
 
     return div;
@@ -1143,19 +1158,34 @@ function submitAnswer(qId, answer) {
     const player = state.players[state.currentPlayerIndex];
     state.answers[player][qId] = answer;
 
-    if (state.currentQuestionIndex < state.questions.length - 1) {
-        state.currentQuestionIndex++;
-        render();
-    } else {
-        if (state.currentPlayerIndex < state.players.length - 1) {
-            state.currentPlayerIndex++;
-            state.currentQuestionIndex = 0;
-            setState({ view: 'pass' });
-        } else {
-            calculateScores();
-            setState({ view: 'results' });
-        }
+    const app = document.getElementById('app');
+    const currentView = app.querySelector('.view');
+    if (currentView) {
+        currentView.classList.add('slide-out-left');
     }
+
+    setTimeout(() => {
+        if (state.currentQuestionIndex < state.questions.length - 1) {
+            setState({ currentQuestionIndex: state.currentQuestionIndex + 1 });
+            // Apply slide-in to the new view
+            const newView = app.querySelector('.view');
+            if (newView) {
+                newView.classList.remove('fade-in');
+                newView.classList.add('slide-in-right');
+            }
+        } else {
+            if (state.currentPlayerIndex < state.players.length - 1) {
+                setState({
+                    currentPlayerIndex: state.currentPlayerIndex + 1,
+                    currentQuestionIndex: 0,
+                    view: 'pass'
+                });
+            } else {
+                calculateScores();
+                setState({ view: 'results' });
+            }
+        }
+    }, 300);
 }
 
 function calculateScores() {
@@ -1208,7 +1238,7 @@ function renderResults() {
     const shareBtn = div.querySelector('#share-btn');
     const homeBtn = div.querySelector('#home-btn');
 
-    drumBtn.onclick = () => {
+    drumBtn.addEventListener('click', () => {
         sounds.drum.currentTime = 0;
         sounds.drum.play().catch(e => console.warn('Drum sound failed', e));
 
@@ -1221,6 +1251,7 @@ function renderResults() {
         document.body.appendChild(overlay);
 
         setTimeout(() => {
+            sounds.drum.pause(); // Stop drum roll when revealing
             document.body.removeChild(overlay);
 
             // Start reveal
@@ -1266,11 +1297,11 @@ function renderResults() {
 
             revealNext();
         }, 3000); // 3 seconds drum roll
-    };
+    });
 
-    shareBtn.onclick = () => {
+    shareBtn.addEventListener('click', () => {
         let text = `Crackeggs Quiz Results (Code: ${state.seed})\n`;
-        sortedPlayers.forEach((p, idx) => {
+        sortedPlayers.filter(p => p && p.trim()).forEach((p, idx) => {
             text += `${idx + 1}. ${p}: ${state.scores[p]} pts\n`;
         });
 
@@ -1282,11 +1313,11 @@ function renderResults() {
         } else {
             navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard!"));
         }
-    };
+    });
 
-    homeBtn.onclick = () => {
+    homeBtn.addEventListener('click', () => {
         setState({ view: 'menu' });
-    };
+    });
 
     return div;
 }

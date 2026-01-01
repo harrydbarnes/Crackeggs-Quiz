@@ -54,7 +54,7 @@ body {
 #intro-text-container {
     overflow: hidden;
     transition: height 0.3s ease;
-    margin-top: 30vh;
+    margin-top: 20vh;
 }
 
 @media (max-width: 768px) {
@@ -307,6 +307,33 @@ input {
 .fade-out {
     opacity: 0;
     transition: opacity 0.3s;
+}
+
+/* New Animations */
+.fade-in {
+    opacity: 0;
+    animation: fadeIn 0.5s forwards;
+}
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
+
+.slide-out-left {
+    transform: translateX(-100%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.slide-in-right {
+    animation: slideInRight 0.3s ease forwards;
+}
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+.question-date {
+    font-size: 0.8rem;
+    color: var(--md-sys-color-outline);
+    margin-top: 5px;
 }
 
 /* Drum Roll Overlay */
