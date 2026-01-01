@@ -19,13 +19,17 @@ const state = {
     endYear: 2024,
     minDbYear: 2000,
     maxDbYear: 2030,
-    menuStep: 1 // 1: Mode Selection, 2: Options
+    menuStep: 1, // 1: Mode Selection, 2: Options
+    isMuted: false // New state for mute
 };
 
 // Sounds
 const sounds = {
     drum: new Audio('https://actions.google.com/sounds/v1/cartoon/crash_layer_drumset.ogg'),
-    confetti: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg')
+    confetti: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg'),
+    correct: new Audio('https://actions.google.com/sounds/v1/cartoon/woodblock_hit.ogg'),
+    wrong: new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg'),
+    clapping: new Audio('https://actions.google.com/sounds/v1/crowds/female_crowd_celebration.ogg')
 };
 
 // Track current view to allow smooth updates
@@ -35,6 +39,15 @@ let lastMenuStep = null;
 const STORAGE_KEY = 'crackeggs_quiz_state_v3';
 
 // --- UI Utilities ---
+
+function playSound(key) {
+    if (state.isMuted) return;
+    const sound = sounds[key];
+    if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.warn(`Sound ${key} failed`, e));
+    }
+}
 
 function createUIContainers() {
     const app = document.body;
@@ -129,8 +142,7 @@ function showModal(title, content, actions = []) {
 }
 
 function triggerConfetti() {
-    sounds.confetti.currentTime = 0;
-    sounds.confetti.play().catch(e => console.warn('Confetti sound failed', e));
+    playSound('confetti');
     const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
 
     for (let i = 0; i < 100; i++) {
@@ -146,6 +158,27 @@ function triggerConfetti() {
             if (document.body.contains(confetti)) document.body.removeChild(confetti);
         }, 5000);
     }
+}
+
+function startCountdown(callback) {
+    const overlay = document.createElement('div');
+    overlay.id = 'countdown-overlay';
+    document.body.appendChild(overlay);
+
+    const steps = ['3', '2', '1'];
+    let i = 0;
+
+    const showNext = () => {
+        if (i < steps.length) {
+            overlay.innerHTML = `<div class="countdown-number">${steps[i]}</div>`;
+            i++;
+            setTimeout(showNext, 1000); // Wait for animation
+        } else {
+            document.body.removeChild(overlay);
+            callback();
+        }
+    };
+    showNext();
 }
 
 
@@ -349,12 +382,19 @@ function render() {
     if (state.view !== 'intro') {
         const topBar = document.createElement('div');
         topBar.className = 'top-bar';
+
+        // Mute Icon
+        const muteIcon = state.isMuted ? 'volume_off' : 'volume_up';
+
         topBar.innerHTML = `
             <button class="icon-btn material-symbols-outlined" id="back-btn" aria-label="Go Back">arrow_back</button>
             <span id="header-code" class="header-code">
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
-            ${(state.view === 'game' || state.view === 'results') ? '<button class="icon-btn material-symbols-outlined" id="share-game-btn" aria-label="Share Game">share</button>' : ''}
+            <div style="display: flex; align-items: center;">
+                <button class="icon-btn material-symbols-outlined" id="mute-btn" aria-label="Toggle Sound">${muteIcon}</button>
+                ${(state.view === 'game' || state.view === 'results') ? '<button class="icon-btn material-symbols-outlined" id="share-game-btn" aria-label="Share Game">share</button>' : ''}
+            </div>
         `;
 
         const shareBtn = topBar.querySelector('#share-game-btn');
@@ -364,18 +404,37 @@ function render() {
             });
         }
 
+        const muteBtn = topBar.querySelector('#mute-btn');
+        if (muteBtn) {
+            muteBtn.addEventListener('click', () => {
+                state.isMuted = !state.isMuted;
+                saveState();
+                // Update icon immediately
+                muteBtn.innerText = state.isMuted ? 'volume_off' : 'volume_up';
+            });
+        }
+
         topBar.querySelector('#back-btn').addEventListener('click', () => {
             if (state.view === 'menu') {
                 if (state.menuStep === 2) {
-                    setState({ menuStep: 1 });
+                     // Fade out transition?
+                     const view = app.querySelector('.view');
+                     if(view) view.classList.add('fade-out');
+                     setTimeout(() => setState({ menuStep: 1 }), 300);
                 } else if (state.menuStep === 3) {
-                    if (state.mode === 'solo') {
-                        setState({ menuStep: 2 });
-                    } else {
-                        setState({ menuStep: 1 });
-                    }
+                    const view = app.querySelector('.view');
+                    if(view) view.classList.add('fade-out');
+                    setTimeout(() => {
+                        if (state.mode === 'solo') {
+                            setState({ menuStep: 2 });
+                        } else {
+                            setState({ menuStep: 1 });
+                        }
+                    }, 300);
                 } else {
-                    setState({ view: 'intro' });
+                    const view = app.querySelector('.view');
+                    if(view) view.classList.add('fade-out');
+                    setTimeout(() => setState({ view: 'intro' }), 300);
                 }
             } else if (state.view === 'results') {
                 setState({ view: 'menu', menuStep: 1, seed: null });
@@ -416,7 +475,7 @@ function render() {
 
 function renderIntro() {
     const div = document.createElement('div');
-    div.className = 'view view-centered';
+    div.className = 'view view-centered fade-in';
     div.innerHTML = `
         <div id="intro-text-container">
             <h1 id="intro-title" class="m-0">Ready to crack eggs?</h1>
@@ -458,7 +517,7 @@ function renderIntro() {
 
 function renderMenu() {
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
 
     if (state.menuStep === 1) {
         renderMenuStep1(div);
@@ -493,11 +552,17 @@ function renderMenuStep1(div) {
     div.querySelector('#mode-party').addEventListener('click', () => setState({ mode: 'party' }));
 
     div.querySelector('#next-btn').addEventListener('click', () => {
-        if (state.mode === 'solo') {
-            setState({ menuStep: 2 });
-        } else {
-            setState({ menuStep: 3 }); // Skip name input for party
-        }
+        // Fade out
+        div.classList.add('fade-out');
+        div.classList.remove('fade-in');
+
+        setTimeout(() => {
+            if (state.mode === 'solo') {
+                setState({ menuStep: 2 });
+            } else {
+                setState({ menuStep: 3 }); // Skip name input for party
+            }
+        }, 300);
     });
 }
 
@@ -519,10 +584,20 @@ function renderMenuStep2(div) {
             state.soloName = e.target.value;
             saveState();
         };
+        // Clear default text on click/focus
+        nameInput.addEventListener('focus', function() {
+            if (this.value === 'Player 1') {
+                this.value = '';
+                state.soloName = '';
+                saveState();
+            }
+        });
     }
 
     div.querySelector('#step2-next-btn').addEventListener('click', () => {
-        setState({ menuStep: 3 });
+        div.classList.add('fade-out');
+        div.classList.remove('fade-in');
+        setTimeout(() => setState({ menuStep: 3 }), 300);
     });
 }
 
@@ -575,7 +650,7 @@ function renderMenuStep3(div) {
             </div>
         </div>
 
-        <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
+        <button class="btn btn-filled mt-med w-200" id="start-btn">Let's Quiz!</button>
     `;
 
     // Attach listeners for settings
@@ -647,7 +722,9 @@ function renderMenuStep3(div) {
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
         } else {
-            startGame([(state.soloName.trim()) || 'Player 1'], seed);
+             startCountdown(() => {
+                startGame([(state.soloName.trim()) || 'Player 1'], seed);
+             });
         }
     });
 }
@@ -720,7 +797,7 @@ function updateButtonGroup(buttons) {
 
 function renderSetup() {
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
     div.innerHTML = `
         <h2 class="m-0">Quiz Code: ${state.seed}</h2>
         <h2>Who is playing?</h2>
@@ -758,7 +835,9 @@ function renderSetup() {
             showToast("Need at least 1 player!");
             return;
         }
-        startGame(players, state.seed);
+        startCountdown(() => {
+            startGame(players, state.seed);
+        });
     });
 
     return div;
@@ -820,7 +899,7 @@ function startGame(players, seed) {
 function renderPassScreen() {
     const player = state.players[state.currentPlayerIndex];
     const div = document.createElement('div');
-    div.className = 'view view-centered';
+    div.className = 'view view-centered fade-in';
     div.style.backgroundColor = 'var(--md-sys-color-primary)';
     div.style.color = 'var(--md-sys-color-on-primary)';
 
@@ -1109,22 +1188,34 @@ function renderGame() {
         } else {
             const points = calculatePoints(question, answer);
 
+            // Sounds & Logic
             if (question.type === 'who_said_it') {
                 const isCorrect = points > 0;
                 feedback.innerHTML = isCorrect ?
                         '<span class="correct">Correct! +1000 pts</span>' :
                         `<span class="incorrect">Wrong! It was ${escapeHTML(question.correctAnswer)}</span>`;
+
+                if (isCorrect) {
+                    playSound('correct');
+                    playSound('clapping');
+                } else {
+                    playSound('wrong');
+                }
             } else {
                 const diff = Math.abs(answer - question.correctAnswer);
                 let msg = '';
                 if (diff === 0) {
                     msg = '<span class="correct">Exact Match! +1000 pts</span>';
+                    playSound('correct');
+                    playSound('clapping');
                 } else {
                     const ansText = question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer;
                     if (points > 0) {
                         msg = `<span class="partial">Close! The answer was ${ansText}. <br>+${points} pts</span>`;
+                        playSound('correct'); // Maybe just ding, no clap for partial? Or both. User said "if correct". Partial is > 0 pts.
                     } else {
                         msg = `<span class="incorrect">Missed it! The answer was ${ansText}. <br>0 pts</span>`;
+                        playSound('wrong');
                     }
                 }
                 feedback.innerHTML = msg;
@@ -1228,7 +1319,7 @@ function calculateScores() {
 
 function renderResults() {
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
 
     const sortedPlayers = [...state.players].sort((a, b) => state.scores[b] - state.scores[a]);
 
@@ -1272,8 +1363,7 @@ function renderResults() {
     });
 
     drumBtn.addEventListener('click', () => {
-        sounds.drum.currentTime = 0;
-        sounds.drum.play().catch(e => console.warn('Drum sound failed', e));
+        playSound('drum');
 
         drumContainer.innerHTML = '';
 
