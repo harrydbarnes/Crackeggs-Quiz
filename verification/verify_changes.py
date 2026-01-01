@@ -74,7 +74,9 @@ def verify_changes():
 
         # We need to ensure the oninput event fired and saved state.
         # Force a small wait.
-        page.wait_for_timeout(500)
+        # We need to ensure the onchange event fires to save the state.
+        # Blurring the input is more reliable than a fixed timeout.
+        page.get_by_label("What should we call you?").blur()
 
         page.reload()
 
