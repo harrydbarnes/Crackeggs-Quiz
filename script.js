@@ -515,13 +515,9 @@ function renderMenuStep2(div) {
 
     const nameInput = div.querySelector('#solo-name-input');
     if (nameInput) {
-        nameInput.onchange = (e) => {
+        nameInput.oninput = (e) => {
             state.soloName = e.target.value;
             saveState();
-        };
-        // Also update state on input for UI responsiveness (but don't save yet)
-        nameInput.oninput = (e) => {
-             state.soloName = e.target.value;
         };
     }
 
