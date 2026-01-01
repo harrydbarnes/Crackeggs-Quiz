@@ -94,6 +94,17 @@ function showToast(message, duration = 3000) {
     }, duration);
 }
 
+function navigateWithFadeOut(action) {
+    const view = document.querySelector('.view');
+    if (view) {
+        view.classList.remove('fade-in');
+        view.classList.add('fade-out');
+        setTimeout(action, 300);
+    } else {
+        action();
+    }
+}
+
 function showModal(title, content, actions = []) {
     return new Promise((resolve) => {
         const overlay = document.getElementById('modal-overlay');
@@ -417,24 +428,17 @@ function render() {
         topBar.querySelector('#back-btn').addEventListener('click', () => {
             if (state.view === 'menu') {
                 if (state.menuStep === 2) {
-                     // Fade out transition?
-                     const view = app.querySelector('.view');
-                     if(view) view.classList.add('fade-out');
-                     setTimeout(() => setState({ menuStep: 1 }), 300);
+                     navigateWithFadeOut(() => setState({ menuStep: 1 }));
                 } else if (state.menuStep === 3) {
-                    const view = app.querySelector('.view');
-                    if(view) view.classList.add('fade-out');
-                    setTimeout(() => {
+                    navigateWithFadeOut(() => {
                         if (state.mode === 'solo') {
                             setState({ menuStep: 2 });
                         } else {
                             setState({ menuStep: 1 });
                         }
-                    }, 300);
+                    });
                 } else {
-                    const view = app.querySelector('.view');
-                    if(view) view.classList.add('fade-out');
-                    setTimeout(() => setState({ view: 'intro' }), 300);
+                    navigateWithFadeOut(() => setState({ view: 'intro' }));
                 }
             } else if (state.view === 'results') {
                 setState({ view: 'menu', menuStep: 1, seed: null });
@@ -507,8 +511,7 @@ function renderIntro() {
                 }, 300);
             }, 300);
         } else {
-            div.classList.add('fade-out');
-            setTimeout(() => setState({ view: 'menu', menuStep: 1, seed: null }), 300);
+            navigateWithFadeOut(() => setState({ view: 'menu', menuStep: 1, seed: null }));
         }
     });
 
@@ -552,17 +555,13 @@ function renderMenuStep1(div) {
     div.querySelector('#mode-party').addEventListener('click', () => setState({ mode: 'party' }));
 
     div.querySelector('#next-btn').addEventListener('click', () => {
-        // Fade out
-        div.classList.add('fade-out');
-        div.classList.remove('fade-in');
-
-        setTimeout(() => {
+        navigateWithFadeOut(() => {
             if (state.mode === 'solo') {
                 setState({ menuStep: 2 });
             } else {
                 setState({ menuStep: 3 }); // Skip name input for party
             }
-        }, 300);
+        });
     });
 }
 
@@ -595,9 +594,7 @@ function renderMenuStep2(div) {
     }
 
     div.querySelector('#step2-next-btn').addEventListener('click', () => {
-        div.classList.add('fade-out');
-        div.classList.remove('fade-in');
-        setTimeout(() => setState({ menuStep: 3 }), 300);
+        navigateWithFadeOut(() => setState({ menuStep: 3 }));
     });
 }
 

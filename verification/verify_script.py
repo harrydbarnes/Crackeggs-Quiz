@@ -18,7 +18,7 @@ def verify_changes():
              print("Clicking 'Click me'...")
              btn.click()
              # Wait for text change
-             page.wait_for_timeout(1000)
+             page.get_by_role('button', name="Let's Play").wait_for()
              page.screenshot(path="verification/2_intro_transformed.png")
 
              # Click "Let's Play"
@@ -33,7 +33,7 @@ def verify_changes():
         # Click Solo
         page.locator("#mode-solo").click()
         page.locator("#next-btn").click()
-        page.wait_for_timeout(500)
+        page.locator("#solo-name-input").wait_for()
 
         # Verify Menu Step 2 (Name)
         print("Verifying Menu Step 2...")
@@ -48,7 +48,7 @@ def verify_changes():
         page.screenshot(path="verification/4_menu_step2.png")
 
         page.locator("#step2-next-btn").click()
-        page.wait_for_timeout(500)
+        page.locator("#start-btn").wait_for()
 
         # Verify Menu Step 3 (Settings)
         print("Verifying Menu Step 3...")
@@ -62,11 +62,11 @@ def verify_changes():
         start_btn.click()
 
         # Capture countdown (it's 3 seconds, so catch one of them)
-        page.wait_for_timeout(500)
+        page.locator("#countdown-overlay").wait_for()
         page.screenshot(path="verification/6_countdown.png")
 
         # Wait for game
-        page.wait_for_timeout(3500)
+        page.locator(".card").wait_for()
         page.screenshot(path="verification/7_game.png")
 
         # Verify Mute Button in Top Bar
