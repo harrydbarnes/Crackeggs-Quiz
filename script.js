@@ -209,7 +209,9 @@ function shareGame(seed) {
     if (navigator.share) {
         navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
     } else {
-        navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
+        navigator.clipboard.writeText(text)
+            .then(() => showToast("Link copied to clipboard!"))
+            .catch(console.error);
     }
 }
 
@@ -513,9 +515,13 @@ function renderMenuStep2(div) {
 
     const nameInput = div.querySelector('#solo-name-input');
     if (nameInput) {
-        nameInput.oninput = (e) => {
+        nameInput.onchange = (e) => {
             state.soloName = e.target.value;
             saveState();
+        };
+        // Also update state on input for UI responsiveness (but don't save yet)
+        nameInput.oninput = (e) => {
+             state.soloName = e.target.value;
         };
     }
 
