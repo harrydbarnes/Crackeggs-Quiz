@@ -203,6 +203,18 @@ function updateYearInfoVisibility() {
     }
 }
 
+function shareGame(seed) {
+    const url = window.location.href.split('?')[0] + '?code=' + seed;
+    const text = `Join my Crackeggs Quiz! Code: ${seed}\n${url}`;
+    if (navigator.share) {
+        navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
+    } else {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast("Link copied to clipboard!"))
+            .catch(console.error);
+    }
+}
+
 // --- Persistence ---
 
 function saveState() {
@@ -348,13 +360,7 @@ function render() {
         const shareBtn = topBar.querySelector('#share-game-btn');
         if (shareBtn) {
             shareBtn.addEventListener('click', () => {
-                const url = window.location.href.split('?')[0] + '?code=' + state.seed;
-                const text = `Join my Crackeggs Quiz! Code: ${state.seed}\n${url}`;
-                if (navigator.share) {
-                    navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
-                } else {
-                    navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
-                }
+                shareGame(state.seed);
             });
         }
 
@@ -511,6 +517,7 @@ function renderMenuStep2(div) {
     if (nameInput) {
         nameInput.oninput = (e) => {
             state.soloName = e.target.value;
+            saveState();
         };
     }
 
@@ -636,12 +643,6 @@ function renderMenuStep3(div) {
     div.querySelector('#start-btn').addEventListener('click', () => {
         const seedInput = div.querySelector('#seed-input').value;
         const seed = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 9000) + 1000;
-
-        // If user didn't type anything, update state.seed to the random one so it shows in game
-        if (!seedInput) {
-            state.seed = seed; // Ensure global seed is set
-            saveState(); // Persist
-        }
 
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
@@ -1267,13 +1268,7 @@ function renderResults() {
     const homeBtn = div.querySelector('#home-btn');
 
     div.querySelector('#share-results-code').addEventListener('click', () => {
-        const url = window.location.href.split('?')[0] + '?code=' + state.seed;
-        const text = `Join my Crackeggs Quiz! Code: ${state.seed}\n${url}`;
-        if (navigator.share) {
-            navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
-        } else {
-            navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
-        }
+        shareGame(state.seed);
     });
 
     drumBtn.addEventListener('click', () => {
