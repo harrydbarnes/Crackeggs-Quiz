@@ -24,7 +24,7 @@ const state = {
 
 // Sounds
 const sounds = {
-    drum: new Audio('https://actions.google.com/sounds/v1/cartoon/drum_roll.ogg'),
+    drum: new Audio('https://actions.google.com/sounds/v1/cartoon/crash_layer_drumset.ogg'),
     confetti: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg')
 };
 
@@ -297,7 +297,7 @@ function resetGame() {
         { text: "Quit", primary: true, value: true }
     ]).then(result => {
         if (result) {
-            setState({ view: 'menu' });
+            setState({ view: 'menu', menuStep: 1, seed: null });
         }
     });
 }
@@ -342,16 +342,37 @@ function render() {
             <span id="header-code" class="header-code">
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
+            ${(state.view === 'game' || state.view === 'results') ? '<button class="icon-btn material-symbols-outlined" id="share-game-btn" aria-label="Share Game">share</button>' : ''}
         `;
+
+        const shareBtn = topBar.querySelector('#share-game-btn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                const url = window.location.href.split('?')[0] + '?code=' + state.seed;
+                const text = `Join my Crackeggs Quiz! Code: ${state.seed}\n${url}`;
+                if (navigator.share) {
+                    navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
+                } else {
+                    navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
+                }
+            });
+        }
+
         topBar.querySelector('#back-btn').addEventListener('click', () => {
             if (state.view === 'menu') {
                 if (state.menuStep === 2) {
                     setState({ menuStep: 1 });
+                } else if (state.menuStep === 3) {
+                    if (state.mode === 'solo') {
+                        setState({ menuStep: 2 });
+                    } else {
+                        setState({ menuStep: 1 });
+                    }
                 } else {
                     setState({ view: 'intro' });
                 }
             } else if (state.view === 'results') {
-                setState({ view: 'menu', menuStep: 1 });
+                setState({ view: 'menu', menuStep: 1, seed: null });
             } else {
                 resetGame();
             }
@@ -422,7 +443,7 @@ function renderIntro() {
             }, 300);
         } else {
             div.classList.add('fade-out');
-            setTimeout(() => setState({ view: 'menu' }), 300);
+            setTimeout(() => setState({ view: 'menu', menuStep: 1, seed: null }), 300);
         }
     });
 
@@ -437,6 +458,8 @@ function renderMenu() {
         renderMenuStep1(div);
     } else if (state.menuStep === 2) {
         renderMenuStep2(div);
+    } else if (state.menuStep === 3) {
+        renderMenuStep3(div);
     }
 
     setTimeout(updateMenu, 0);
@@ -464,18 +487,41 @@ function renderMenuStep1(div) {
     div.querySelector('#mode-party').addEventListener('click', () => setState({ mode: 'party' }));
 
     div.querySelector('#next-btn').addEventListener('click', () => {
-        setState({ menuStep: 2 });
+        if (state.mode === 'solo') {
+            setState({ menuStep: 2 });
+        } else {
+            setState({ menuStep: 3 }); // Skip name input for party
+        }
     });
 }
 
 function renderMenuStep2(div) {
     div.innerHTML = `
-        <h1>Game Settings</h1>
+        <h1>Who is playing?</h1>
 
-        <div id="solo-name-section" class="mt-small" style="display: none;">
+        <div class="mt-med flex-col-center">
             <label class="subtitle mb-small" for="solo-name-input">What should we call you?</label>
-            <input type="text" id="solo-name-input" class="input-standard" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
+            <input type="text" id="solo-name-input" class="input-standard mt-small" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
         </div>
+
+        <button class="btn btn-filled mt-med w-200" id="step2-next-btn">Next</button>
+    `;
+
+    const nameInput = div.querySelector('#solo-name-input');
+    if (nameInput) {
+        nameInput.oninput = (e) => {
+            state.soloName = e.target.value;
+        };
+    }
+
+    div.querySelector('#step2-next-btn').addEventListener('click', () => {
+        setState({ menuStep: 3 });
+    });
+}
+
+function renderMenuStep3(div) {
+    div.innerHTML = `
+        <h1>Game Settings</h1>
 
         <div class="subtitle mt-med mb-small">Number of Questions</div>
         <div class="flex-row mb-small">
@@ -519,7 +565,6 @@ function renderMenuStep2(div) {
             <div class="info-text mb-small">Enter the same code as your friends to get the same questions.</div>
             <div class="flex-center">
             <input type="number" id="seed-input" class="input-small" placeholder="Random" value="${state.seed || ''}" aria-label="Quiz Code (Optional)">
-            <button class="btn btn-outlined" id="share-code-btn" title="Share Code" aria-label="Share Quiz Code"><span class="material-symbols-outlined">share</span></button>
             </div>
         </div>
 
@@ -536,14 +581,6 @@ function renderMenuStep2(div) {
 
     div.querySelector('#chips-yes').addEventListener('click', () => setState({ enableChips: true }));
     div.querySelector('#chips-no').addEventListener('click', () => setState({ enableChips: false }));
-
-    // Handle solo name input
-    const nameInput = div.querySelector('#solo-name-input');
-    if (nameInput) {
-        nameInput.oninput = (e) => {
-            state.soloName = e.target.value;
-        };
-    }
 
     // Handle Seed Input
     const seedIn = div.querySelector('#seed-input');
@@ -596,24 +633,15 @@ function renderMenuStep2(div) {
         setTimeout(updateSlider, 0);
     }
 
-    div.querySelector('#share-code-btn').addEventListener('click', () => {
-        const code = seedIn.value || 'Random';
-        if (code === 'Random') {
-            showToast("Enter a code first to share!");
-            return;
-        }
-        const url = window.location.href.split('?')[0] + '?code=' + code;
-        const text = `Join my Crackeggs Quiz! Code: ${code}\n${url}`;
-        if (navigator.share) {
-            navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
-        } else {
-            navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
-        }
-    });
-
     div.querySelector('#start-btn').addEventListener('click', () => {
         const seedInput = div.querySelector('#seed-input').value;
         const seed = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 9000) + 1000;
+
+        // If user didn't type anything, update state.seed to the random one so it shows in game
+        if (!seedInput) {
+            state.seed = seed; // Ensure global seed is set
+            saveState(); // Persist
+        }
 
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
@@ -634,7 +662,9 @@ function updateMenu() {
     if (state.menuStep === 1) {
         updateMenuStep1();
     } else if (state.menuStep === 2) {
-        updateMenuStep2();
+        // No dynamic updates for Step 2
+    } else if (state.menuStep === 3) {
+        updateMenuStep3();
     }
 }
 
@@ -650,12 +680,7 @@ function updateMenuStep1() {
     }
 }
 
-function updateMenuStep2() {
-    const soloSection = document.getElementById('solo-name-section');
-    if (soloSection) {
-        soloSection.style.display = state.mode === 'solo' ? 'block' : 'none';
-    }
-
+function updateMenuStep3() {
     updateButtonGroup([
         { id: 'count-5', active: state.questionCount === 5 },
         { id: 'count-10', active: state.questionCount === 10 },
@@ -1214,7 +1239,10 @@ function renderResults() {
 
     let html = `
         <h1>Results</h1>
-        <div class="subtitle">Quiz Code: ${state.seed}</div>
+        <div class="subtitle flex-center">
+            Quiz Code: ${state.seed}
+            <button class="icon-btn material-symbols-outlined" id="share-results-code" style="font-size: 1.2rem; padding: 4px;" aria-label="Share Code">share</button>
+        </div>
         <div class="mb-med text-bold primary-color">(Higher Score is Better!)</div>
 
         <div id="drum-container">${drumRollHtml}</div>
@@ -1237,6 +1265,16 @@ function renderResults() {
     const actionButtons = div.querySelector('#action-buttons');
     const shareBtn = div.querySelector('#share-btn');
     const homeBtn = div.querySelector('#home-btn');
+
+    div.querySelector('#share-results-code').addEventListener('click', () => {
+        const url = window.location.href.split('?')[0] + '?code=' + state.seed;
+        const text = `Join my Crackeggs Quiz! Code: ${state.seed}\n${url}`;
+        if (navigator.share) {
+            navigator.share({ title: 'Crackeggs Quiz', text: text, url: url }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(text).then(() => showToast("Link copied to clipboard!"));
+        }
+    });
 
     drumBtn.addEventListener('click', () => {
         sounds.drum.currentTime = 0;
@@ -1316,7 +1354,7 @@ function renderResults() {
     });
 
     homeBtn.addEventListener('click', () => {
-        setState({ view: 'menu' });
+        setState({ view: 'menu', menuStep: 1, seed: null });
     });
 
     return div;
