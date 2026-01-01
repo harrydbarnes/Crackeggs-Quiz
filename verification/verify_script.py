@@ -24,7 +24,7 @@ def verify_changes():
              # Click "Let's Play"
              print("Clicking 'Let's Play'...")
              btn.click()
-             page.wait_for_timeout(500) # Wait for fade
+             page.locator("#next-btn").wait_for() # Wait for the next view's button to be ready
 
         # Verify Menu Step 1 (Mode)
         print("Verifying Menu Step 1...")
