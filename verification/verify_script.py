@@ -44,11 +44,8 @@ def verify_changes():
         print("Verifying Menu Step 2...")
         # Check default text clearing
         name_input = page.locator("#solo-name-input")
-        assert name_input.input_value() == "Player 1", f"Expected 'Player 1', got '{name_input.input_value()}'"
-
-        # Focus to clear
-        name_input.focus()
-        assert name_input.input_value() == "", f"Expected empty string after focus, got '{name_input.input_value()}'"
+        assert name_input.input_value() == "", f"Expected empty string (placeholder used), got '{name_input.input_value()}'"
+        assert name_input.get_attribute("placeholder") == "Player 1", "Placeholder mismatch"
 
         page.screenshot(path="verification/4_menu_step2.png")
 

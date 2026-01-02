@@ -1,3 +1,6 @@
+const FADE_OUT_DURATION = 300;
+const COUNTDOWN_INTERVAL = 1000;
+
 // State
 const state = {
     view: 'intro', // intro, menu, setup_options, setup, game, results, pass
@@ -13,7 +16,7 @@ const state = {
     revealAtEnd: false,
     enableChips: true,
     playerChips: {}, // { playerName: { '5050': true, 'range': true, 'audience': true, 'context': true } }
-    soloName: 'Player 1',
+    soloName: '',
     filterYear: false,
     startYear: 2020,
     endYear: 2024,
@@ -92,7 +95,7 @@ function showToast(message, duration = 3000) {
         toast.classList.remove('show');
         setTimeout(() => {
             if (container.contains(toast)) container.removeChild(toast);
-        }, 300);
+        }, FADE_OUT_DURATION);
     }, duration);
 }
 
@@ -101,7 +104,7 @@ function navigateWithFadeOut(action) {
     if (view) {
         view.classList.remove('fade-in');
         view.classList.add('fade-out');
-        setTimeout(action, 300);
+        setTimeout(action, FADE_OUT_DURATION);
     } else {
         action();
     }
@@ -185,7 +188,7 @@ function startCountdown(callback) {
         if (i < steps.length) {
             overlay.innerHTML = `<div class="countdown-number">${steps[i]}</div>`;
             i++;
-            setTimeout(showNext, 1000); // Wait for animation
+            setTimeout(showNext, COUNTDOWN_INTERVAL); // Wait for animation
         } else {
             document.body.removeChild(overlay);
             callback();
@@ -517,8 +520,8 @@ function renderIntro() {
                 btn.innerText = "Let's Play";
                 setTimeout(() => {
                     container.style.height = 'auto';
-                }, 300);
-            }, 300);
+                }, FADE_OUT_DURATION);
+            }, FADE_OUT_DURATION);
         } else {
             navigateWithFadeOut(() => setState({ view: 'menu', menuStep: 1, seed: null }));
         }
@@ -580,7 +583,7 @@ function renderMenuStep2(div) {
 
         <div class="mt-med flex-col-center">
             <label class="subtitle mb-small" for="solo-name-input">What should we call you?</label>
-            <input type="text" id="solo-name-input" class="input-standard mt-small" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
+            <input type="text" id="solo-name-input" class="input-standard mt-small" value="${escapeHTML(state.soloName)}" placeholder="Player 1">
         </div>
 
         <button class="btn btn-filled mt-med w-200" id="step2-next-btn">Next</button>
@@ -592,14 +595,6 @@ function renderMenuStep2(div) {
             state.soloName = e.target.value;
             saveState();
         };
-        // Clear default text on click/focus
-        nameInput.addEventListener('focus', function() {
-            if (this.value === 'Player 1') {
-                this.value = '';
-                state.soloName = '';
-                saveState();
-            }
-        });
     }
 
     div.querySelector('#step2-next-btn').addEventListener('click', () => {
@@ -1315,7 +1310,7 @@ function submitAnswer(qId, answer) {
                 setState({ view: 'results' });
             }
         }
-    }, 300);
+    }, FADE_OUT_DURATION);
 }
 
 function calculateScores() {
