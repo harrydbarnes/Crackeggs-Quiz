@@ -1209,7 +1209,7 @@ function renderGame() {
                     const ansText = question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer;
                     if (points > 0) {
                         msg = `<span class="partial">Close! The answer was ${ansText}. <br>+${points} pts</span>`;
-                        playSound('correct'); // Maybe just ding, no clap for partial? Or both. User said "if correct". Partial is > 0 pts.
+                        playSound('correct');
                     } else {
                         msg = `<span class="incorrect">Missed it! The answer was ${ansText}. <br>0 pts</span>`;
                         playSound('wrong');
