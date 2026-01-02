@@ -35,6 +35,8 @@ const sounds = {
 // Track current view to allow smooth updates
 let lastRenderedView = null;
 let lastMenuStep = null;
+let lastQuestionIndex = null;
+let lastPlayerIndex = null;
 
 const STORAGE_KEY = 'crackeggs_quiz_state_v3';
 
@@ -377,16 +379,26 @@ function render() {
 
     // If view hasn't changed, try to update in-place
     if (state.view === lastRenderedView) {
+        updateTopBar();
+
         if (state.view === 'menu') {
             if (state.menuStep === lastMenuStep) {
                 updateMenu();
                 return;
             }
+        } else if (state.view === 'game') {
+            if (state.currentQuestionIndex === lastQuestionIndex && state.currentPlayerIndex === lastPlayerIndex) {
+                return;
+            }
+        } else if (state.view === 'setup' || state.view === 'results' || state.view === 'pass') {
+            return;
         }
     }
 
     lastRenderedView = state.view;
     lastMenuStep = state.menuStep;
+    lastQuestionIndex = state.currentQuestionIndex;
+    lastPlayerIndex = state.currentPlayerIndex;
     app.innerHTML = '';
 
     // Global Elements (Top Bar)
@@ -418,10 +430,7 @@ function render() {
         const muteBtn = topBar.querySelector('#mute-btn');
         if (muteBtn) {
             muteBtn.addEventListener('click', () => {
-                state.isMuted = !state.isMuted;
-                saveState();
-                // Update icon immediately
-                muteBtn.innerText = state.isMuted ? 'volume_off' : 'volume_up';
+                setState({ isMuted: !state.isMuted });
             });
         }
 
@@ -740,6 +749,13 @@ function updateMenu() {
         // No dynamic updates for Step 2
     } else if (state.menuStep === 3) {
         updateMenuStep3();
+    }
+}
+
+function updateTopBar() {
+    const muteBtn = document.getElementById('mute-btn');
+    if (muteBtn) {
+        muteBtn.innerText = state.isMuted ? 'volume_off' : 'volume_up';
     }
 }
 
@@ -1209,7 +1225,7 @@ function renderGame() {
                     const ansText = question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer;
                     if (points > 0) {
                         msg = `<span class="partial">Close! The answer was ${ansText}. <br>+${points} pts</span>`;
-                        playSound('correct');
+                        playSound('correct'); // Maybe just ding, no clap for partial? Or both. User said "if correct". Partial is > 0 pts.
                     } else {
                         msg = `<span class="incorrect">Missed it! The answer was ${ansText}. <br>0 pts</span>`;
                         playSound('wrong');

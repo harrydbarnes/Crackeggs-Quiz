@@ -14,21 +14,26 @@ def verify_changes():
         # Wait for "Click me" text
         page.wait_for_selector("#intro-btn")
         btn = page.locator("#intro-btn")
-        if btn.inner_text() == "Click me":
-             print("Clicking 'Click me'...")
-             btn.click()
-             # Wait for text change
-             page.get_by_role('button', name="Let's Play").wait_for()
-             page.screenshot(path="verification/2_intro_transformed.png")
 
-             # Click "Let's Play"
-             print("Clicking 'Let's Play'...")
-             btn.click()
-             page.locator("#next-btn").wait_for() # Wait for the next view's button to be ready
+        assert btn.inner_text() == "Click me", "Intro button text mismatch"
+        print("Clicking 'Click me'...")
+        btn.click()
+
+        # Wait for text change
+        let_play_btn = page.get_by_role('button', name="Let's Play")
+        let_play_btn.wait_for()
+        assert let_play_btn.is_visible(), "Let's Play button not visible"
+        page.screenshot(path="verification/2_intro_transformed.png")
+
+        # Click "Let's Play"
+        print("Clicking 'Let's Play'...")
+        let_play_btn.click()
+        page.locator("#next-btn").wait_for()
 
         # Verify Menu Step 1 (Mode)
         print("Verifying Menu Step 1...")
         page.screenshot(path="verification/3_menu_step1.png")
+        assert page.locator("#mode-solo").is_visible(), "Solo mode button missing"
 
         # Click Solo
         page.locator("#mode-solo").click()
@@ -39,11 +44,11 @@ def verify_changes():
         print("Verifying Menu Step 2...")
         # Check default text clearing
         name_input = page.locator("#solo-name-input")
-        print(f"Initial value: '{name_input.input_value()}'")
+        assert name_input.input_value() == "Player 1", f"Expected 'Player 1', got '{name_input.input_value()}'"
 
         # Focus to clear
         name_input.focus()
-        print(f"After focus value: '{name_input.input_value()}'")
+        assert name_input.input_value() == "", f"Expected empty string after focus, got '{name_input.input_value()}'"
 
         page.screenshot(path="verification/4_menu_step2.png")
 
@@ -56,7 +61,7 @@ def verify_changes():
 
         # Check new button name "Let's Quiz!"
         start_btn = page.locator("#start-btn")
-        print(f"Start button text: {start_btn.inner_text()}")
+        assert start_btn.inner_text() == "Let's Quiz!", f"Expected 'Let's Quiz!', got '{start_btn.inner_text()}'"
 
         # Start Game -> Countdown
         start_btn.click()
