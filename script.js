@@ -1,3 +1,6 @@
+const FADE_OUT_DURATION = 300;
+const COUNTDOWN_INTERVAL = 1000;
+
 // State
 const state = {
     view: 'intro', // intro, menu, setup_options, setup, game, results, pass
@@ -13,28 +16,44 @@ const state = {
     revealAtEnd: false,
     enableChips: true,
     playerChips: {}, // { playerName: { '5050': true, 'range': true, 'audience': true, 'context': true } }
-    soloName: 'Player 1',
+    soloName: '',
     filterYear: false,
     startYear: 2020,
     endYear: 2024,
     minDbYear: 2000,
     maxDbYear: 2030,
-    menuStep: 1 // 1: Mode Selection, 2: Options
+    menuStep: 1, // 1: Mode Selection, 2: Options
+    isMuted: false // New state for mute
 };
 
 // Sounds
 const sounds = {
     drum: new Audio('https://actions.google.com/sounds/v1/cartoon/crash_layer_drumset.ogg'),
-    confetti: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg')
+    confetti: new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg'),
+    correct: new Audio('https://actions.google.com/sounds/v1/cartoon/woodblock_hit.ogg'),
+    wrong: new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg'),
+    clapping: new Audio('https://actions.google.com/sounds/v1/crowds/female_crowd_celebration.ogg')
 };
 
 // Track current view to allow smooth updates
 let lastRenderedView = null;
 let lastMenuStep = null;
+let lastQuestionIndex = null;
+let lastPlayerIndex = null;
+let lastSeed = null;
 
 const STORAGE_KEY = 'crackeggs_quiz_state_v3';
 
 // --- UI Utilities ---
+
+function playSound(key) {
+    if (state.isMuted) return;
+    const sound = sounds[key];
+    if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.warn(`Sound ${key} failed`, e));
+    }
+}
 
 function createUIContainers() {
     const app = document.body;
@@ -77,8 +96,19 @@ function showToast(message, duration = 3000) {
         toast.classList.remove('show');
         setTimeout(() => {
             if (container.contains(toast)) container.removeChild(toast);
-        }, 300);
+        }, FADE_OUT_DURATION);
     }, duration);
+}
+
+function navigateWithFadeOut(action) {
+    const view = document.querySelector('.view');
+    if (view) {
+        view.classList.remove('fade-in');
+        view.classList.add('fade-out');
+        setTimeout(action, FADE_OUT_DURATION);
+    } else {
+        action();
+    }
 }
 
 function showModal(title, content, actions = []) {
@@ -129,8 +159,7 @@ function showModal(title, content, actions = []) {
 }
 
 function triggerConfetti() {
-    sounds.confetti.currentTime = 0;
-    sounds.confetti.play().catch(e => console.warn('Confetti sound failed', e));
+    playSound('confetti');
     const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
 
     for (let i = 0; i < 100; i++) {
@@ -146,6 +175,27 @@ function triggerConfetti() {
             if (document.body.contains(confetti)) document.body.removeChild(confetti);
         }, 5000);
     }
+}
+
+function startCountdown(callback) {
+    const overlay = document.createElement('div');
+    overlay.id = 'countdown-overlay';
+    document.body.appendChild(overlay);
+
+    const steps = ['3', '2', '1'];
+    let i = 0;
+
+    const showNext = () => {
+        if (i < steps.length) {
+            overlay.innerHTML = `<div class="countdown-number">${steps[i]}</div>`;
+            i++;
+            setTimeout(showNext, COUNTDOWN_INTERVAL); // Wait for animation
+        } else {
+            document.body.removeChild(overlay);
+            callback();
+        }
+    };
+    showNext();
 }
 
 
@@ -333,9 +383,30 @@ function render() {
 
     // If view hasn't changed, try to update in-place
     if (state.view === lastRenderedView) {
+        updateTopBar();
+
         if (state.view === 'menu') {
             if (state.menuStep === lastMenuStep) {
                 updateMenu();
+                return;
+            }
+        } else if (state.view === 'game') {
+            if (state.currentQuestionIndex === lastQuestionIndex && state.currentPlayerIndex === lastPlayerIndex) {
+                return;
+            }
+        } else if (state.view === 'setup') {
+            if (state.seed === lastSeed) {
+                 return;
+            }
+        } else if (state.view === 'results') {
+             // Results depend on scores and seed. Since scores are calculated once at end of game,
+             // and seed doesn't change during results, checking view is usually enough.
+             // But let's be safe and check seed.
+             if (state.seed === lastSeed) {
+                 return;
+             }
+        } else if (state.view === 'pass') {
+            if (state.currentPlayerIndex === lastPlayerIndex) {
                 return;
             }
         }
@@ -343,18 +414,28 @@ function render() {
 
     lastRenderedView = state.view;
     lastMenuStep = state.menuStep;
+    lastQuestionIndex = state.currentQuestionIndex;
+    lastPlayerIndex = state.currentPlayerIndex;
+    lastSeed = state.seed;
     app.innerHTML = '';
 
     // Global Elements (Top Bar)
     if (state.view !== 'intro') {
         const topBar = document.createElement('div');
         topBar.className = 'top-bar';
+
+        // Mute Icon
+        const muteIcon = state.isMuted ? 'volume_off' : 'volume_up';
+
         topBar.innerHTML = `
             <button class="icon-btn material-symbols-outlined" id="back-btn" aria-label="Go Back">arrow_back</button>
             <span id="header-code" class="header-code">
                ${state.seed && (state.view === 'game' || state.view === 'setup') ? 'Quiz Code: ' + state.seed : ''}
             </span>
-            ${(state.view === 'game' || state.view === 'results') ? '<button class="icon-btn material-symbols-outlined" id="share-game-btn" aria-label="Share Game">share</button>' : ''}
+            <div class="top-bar-actions">
+                <button class="icon-btn material-symbols-outlined" id="mute-btn" aria-label="Toggle Sound">${muteIcon}</button>
+                ${(state.view === 'game' || state.view === 'results') ? '<button class="icon-btn material-symbols-outlined" id="share-game-btn" aria-label="Share Game">share</button>' : ''}
+            </div>
         `;
 
         const shareBtn = topBar.querySelector('#share-game-btn');
@@ -364,18 +445,27 @@ function render() {
             });
         }
 
+        const muteBtn = topBar.querySelector('#mute-btn');
+        if (muteBtn) {
+            muteBtn.addEventListener('click', () => {
+                setState({ isMuted: !state.isMuted });
+            });
+        }
+
         topBar.querySelector('#back-btn').addEventListener('click', () => {
             if (state.view === 'menu') {
                 if (state.menuStep === 2) {
-                    setState({ menuStep: 1 });
+                     navigateWithFadeOut(() => setState({ menuStep: 1 }));
                 } else if (state.menuStep === 3) {
-                    if (state.mode === 'solo') {
-                        setState({ menuStep: 2 });
-                    } else {
-                        setState({ menuStep: 1 });
-                    }
+                    navigateWithFadeOut(() => {
+                        if (state.mode === 'solo') {
+                            setState({ menuStep: 2 });
+                        } else {
+                            setState({ menuStep: 1 });
+                        }
+                    });
                 } else {
-                    setState({ view: 'intro' });
+                    navigateWithFadeOut(() => setState({ view: 'intro' }));
                 }
             } else if (state.view === 'results') {
                 setState({ view: 'menu', menuStep: 1, seed: null });
@@ -416,12 +506,12 @@ function render() {
 
 function renderIntro() {
     const div = document.createElement('div');
-    div.className = 'view view-centered';
+    div.className = 'view view-centered fade-in';
     div.innerHTML = `
         <div id="intro-text-container">
             <h1 id="intro-title" class="m-0">Ready to crack eggs?</h1>
         </div>
-        <button class="btn btn-filled mt-med" id="intro-btn">Click me</button>
+        <button class="btn btn-filled mt-med btn-main-action" id="intro-btn">Click me</button>
     `;
 
     const btn = div.querySelector('#intro-btn');
@@ -445,11 +535,10 @@ function renderIntro() {
                 btn.innerText = "Let's Play";
                 setTimeout(() => {
                     container.style.height = 'auto';
-                }, 300);
-            }, 300);
+                }, FADE_OUT_DURATION);
+            }, FADE_OUT_DURATION);
         } else {
-            div.classList.add('fade-out');
-            setTimeout(() => setState({ view: 'menu', menuStep: 1, seed: null }), 300);
+            navigateWithFadeOut(() => setState({ view: 'menu', menuStep: 1, seed: null }));
         }
     });
 
@@ -458,7 +547,7 @@ function renderIntro() {
 
 function renderMenu() {
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
 
     if (state.menuStep === 1) {
         renderMenuStep1(div);
@@ -485,7 +574,7 @@ function renderMenuStep1(div) {
             <!-- text populated by updateMenu -->
         </div>
 
-        <button class="btn btn-filled mt-med w-200" id="next-btn">Next</button>
+        <button class="btn btn-filled mt-med w-200 btn-main-action" id="next-btn">Next</button>
     `;
 
     // Attach listeners
@@ -493,11 +582,13 @@ function renderMenuStep1(div) {
     div.querySelector('#mode-party').addEventListener('click', () => setState({ mode: 'party' }));
 
     div.querySelector('#next-btn').addEventListener('click', () => {
-        if (state.mode === 'solo') {
-            setState({ menuStep: 2 });
-        } else {
-            setState({ menuStep: 3 }); // Skip name input for party
-        }
+        navigateWithFadeOut(() => {
+            if (state.mode === 'solo') {
+                setState({ menuStep: 2 });
+            } else {
+                setState({ menuStep: 3 }); // Skip name input for party
+            }
+        });
     });
 }
 
@@ -507,10 +598,10 @@ function renderMenuStep2(div) {
 
         <div class="mt-med flex-col-center">
             <label class="subtitle mb-small" for="solo-name-input">What should we call you?</label>
-            <input type="text" id="solo-name-input" class="input-standard mt-small" value="${escapeHTML(state.soloName)}" placeholder="Your Name">
+            <input type="text" id="solo-name-input" class="input-standard mt-small" value="${escapeHTML(state.soloName)}" placeholder="Player 1">
         </div>
 
-        <button class="btn btn-filled mt-med w-200" id="step2-next-btn">Next</button>
+        <button class="btn btn-filled mt-med w-200 btn-main-action" id="step2-next-btn">Next</button>
     `;
 
     const nameInput = div.querySelector('#solo-name-input');
@@ -522,7 +613,7 @@ function renderMenuStep2(div) {
     }
 
     div.querySelector('#step2-next-btn').addEventListener('click', () => {
-        setState({ menuStep: 3 });
+        navigateWithFadeOut(() => setState({ menuStep: 3 }));
     });
 }
 
@@ -575,7 +666,7 @@ function renderMenuStep3(div) {
             </div>
         </div>
 
-        <button class="btn btn-filled mt-med w-200" id="start-btn">Start Game</button>
+        <button class="btn btn-filled mt-med w-200 btn-main-action" id="start-btn">Let's Quiz!</button>
     `;
 
     // Attach listeners for settings
@@ -647,7 +738,9 @@ function renderMenuStep3(div) {
         if (state.mode === 'party') {
             setState({ view: 'setup', seed: seed });
         } else {
-            startGame([(state.soloName.trim()) || 'Player 1'], seed);
+             startCountdown(() => {
+                startGame([(state.soloName.trim()) || 'Player 1'], seed);
+             });
         }
     });
 }
@@ -666,6 +759,13 @@ function updateMenu() {
         // No dynamic updates for Step 2
     } else if (state.menuStep === 3) {
         updateMenuStep3();
+    }
+}
+
+function updateTopBar() {
+    const muteBtn = document.getElementById('mute-btn');
+    if (muteBtn) {
+        muteBtn.innerText = state.isMuted ? 'volume_off' : 'volume_up';
     }
 }
 
@@ -720,7 +820,7 @@ function updateButtonGroup(buttons) {
 
 function renderSetup() {
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
     div.innerHTML = `
         <h2 class="m-0">Quiz Code: ${state.seed}</h2>
         <h2>Who is playing?</h2>
@@ -728,7 +828,7 @@ function renderSetup() {
         <div id="players-list" class="w-100 mb-med">
         </div>
         <button class="btn btn-outlined setup-btn-add" id="add-player">+ Add Player</button>
-        <button class="btn btn-filled" id="start-party">Start Party</button>
+        <button class="btn btn-filled btn-main-action" id="start-party">Start Party</button>
     `;
 
     const list = div.querySelector('#players-list');
@@ -758,7 +858,9 @@ function renderSetup() {
             showToast("Need at least 1 player!");
             return;
         }
-        startGame(players, state.seed);
+        startCountdown(() => {
+            startGame(players, state.seed);
+        });
     });
 
     return div;
@@ -820,7 +922,7 @@ function startGame(players, seed) {
 function renderPassScreen() {
     const player = state.players[state.currentPlayerIndex];
     const div = document.createElement('div');
-    div.className = 'view view-centered';
+    div.className = 'view view-centered fade-in';
     div.style.backgroundColor = 'var(--md-sys-color-primary)';
     div.style.color = 'var(--md-sys-color-on-primary)';
 
@@ -1109,22 +1211,34 @@ function renderGame() {
         } else {
             const points = calculatePoints(question, answer);
 
+            // Sounds & Logic
             if (question.type === 'who_said_it') {
                 const isCorrect = points > 0;
                 feedback.innerHTML = isCorrect ?
                         '<span class="correct">Correct! +1000 pts</span>' :
                         `<span class="incorrect">Wrong! It was ${escapeHTML(question.correctAnswer)}</span>`;
+
+                if (isCorrect) {
+                    playSound('correct');
+                    playSound('clapping');
+                } else {
+                    playSound('wrong');
+                }
             } else {
                 const diff = Math.abs(answer - question.correctAnswer);
                 let msg = '';
                 if (diff === 0) {
                     msg = '<span class="correct">Exact Match! +1000 pts</span>';
+                    playSound('correct');
+                    playSound('clapping');
                 } else {
                     const ansText = question.type === 'when' ? formatDate(question.correctAnswer) : question.correctAnswer;
                     if (points > 0) {
                         msg = `<span class="partial">Close! The answer was ${ansText}. <br>+${points} pts</span>`;
+                        playSound('correct'); // Maybe just ding, no clap for partial? Or both. User said "if correct". Partial is > 0 pts.
                     } else {
                         msg = `<span class="incorrect">Missed it! The answer was ${ansText}. <br>0 pts</span>`;
+                        playSound('wrong');
                     }
                 }
                 feedback.innerHTML = msg;
@@ -1211,7 +1325,7 @@ function submitAnswer(qId, answer) {
                 setState({ view: 'results' });
             }
         }
-    }, 300);
+    }, FADE_OUT_DURATION);
 }
 
 function calculateScores() {
@@ -1228,7 +1342,7 @@ function calculateScores() {
 
 function renderResults() {
     const div = document.createElement('div');
-    div.className = 'view';
+    div.className = 'view fade-in';
 
     const sortedPlayers = [...state.players].sort((a, b) => state.scores[b] - state.scores[a]);
 
@@ -1272,8 +1386,7 @@ function renderResults() {
     });
 
     drumBtn.addEventListener('click', () => {
-        sounds.drum.currentTime = 0;
-        sounds.drum.play().catch(e => console.warn('Drum sound failed', e));
+        playSound('drum');
 
         drumContainer.innerHTML = '';
 
