@@ -610,6 +610,8 @@ function renderMenuStep2(div) {
             state.soloName = e.target.value;
             saveState();
         };
+        // Auto trigger keyboard entry
+        setTimeout(() => nameInput.focus(), 500);
     }
 
     div.querySelector('#step2-next-btn').addEventListener('click', () => {
