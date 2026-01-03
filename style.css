@@ -309,19 +309,6 @@ input {
 #intro-title {
     transition: opacity 0.3s ease;
 }
-.fade-out {
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-/* New Animations */
-.fade-in {
-    opacity: 0;
-    animation: fadeIn 0.5s forwards;
-}
-@keyframes fadeIn {
-    to { opacity: 1; }
-}
 
 .slide-out-left {
     transform: translateX(-100%);
@@ -498,7 +485,7 @@ input {
 /* --- New Styles for Updates --- */
 
 /* Bigger Buttons for easier mobile clicks */
-#intro-btn, #next-btn, #step2-next-btn, #start-btn, #start-party {
+.btn-main-action {
     padding: 24px 32px;
     font-size: 1.5rem;
     min-width: 80%;

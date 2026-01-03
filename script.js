@@ -40,6 +40,7 @@ let lastRenderedView = null;
 let lastMenuStep = null;
 let lastQuestionIndex = null;
 let lastPlayerIndex = null;
+let lastSeed = null;
 
 const STORAGE_KEY = 'crackeggs_quiz_state_v3';
 
@@ -393,8 +394,21 @@ function render() {
             if (state.currentQuestionIndex === lastQuestionIndex && state.currentPlayerIndex === lastPlayerIndex) {
                 return;
             }
-        } else if (state.view === 'setup' || state.view === 'results' || state.view === 'pass') {
-            return;
+        } else if (state.view === 'setup') {
+            if (state.seed === lastSeed) {
+                 return;
+            }
+        } else if (state.view === 'results') {
+             // Results depend on scores and seed. Since scores are calculated once at end of game,
+             // and seed doesn't change during results, checking view is usually enough.
+             // But let's be safe and check seed.
+             if (state.seed === lastSeed) {
+                 return;
+             }
+        } else if (state.view === 'pass') {
+            if (state.currentPlayerIndex === lastPlayerIndex) {
+                return;
+            }
         }
     }
 
@@ -402,6 +416,7 @@ function render() {
     lastMenuStep = state.menuStep;
     lastQuestionIndex = state.currentQuestionIndex;
     lastPlayerIndex = state.currentPlayerIndex;
+    lastSeed = state.seed;
     app.innerHTML = '';
 
     // Global Elements (Top Bar)
@@ -496,7 +511,7 @@ function renderIntro() {
         <div id="intro-text-container">
             <h1 id="intro-title" class="m-0">Ready to crack eggs?</h1>
         </div>
-        <button class="btn btn-filled mt-med" id="intro-btn">Click me</button>
+        <button class="btn btn-filled mt-med btn-main-action" id="intro-btn">Click me</button>
     `;
 
     const btn = div.querySelector('#intro-btn');
@@ -559,7 +574,7 @@ function renderMenuStep1(div) {
             <!-- text populated by updateMenu -->
         </div>
 
-        <button class="btn btn-filled mt-med w-200" id="next-btn">Next</button>
+        <button class="btn btn-filled mt-med w-200 btn-main-action" id="next-btn">Next</button>
     `;
 
     // Attach listeners
@@ -586,7 +601,7 @@ function renderMenuStep2(div) {
             <input type="text" id="solo-name-input" class="input-standard mt-small" value="${escapeHTML(state.soloName)}" placeholder="Player 1">
         </div>
 
-        <button class="btn btn-filled mt-med w-200" id="step2-next-btn">Next</button>
+        <button class="btn btn-filled mt-med w-200 btn-main-action" id="step2-next-btn">Next</button>
     `;
 
     const nameInput = div.querySelector('#solo-name-input');
@@ -651,7 +666,7 @@ function renderMenuStep3(div) {
             </div>
         </div>
 
-        <button class="btn btn-filled mt-med w-200" id="start-btn">Let's Quiz!</button>
+        <button class="btn btn-filled mt-med w-200 btn-main-action" id="start-btn">Let's Quiz!</button>
     `;
 
     // Attach listeners for settings
@@ -813,7 +828,7 @@ function renderSetup() {
         <div id="players-list" class="w-100 mb-med">
         </div>
         <button class="btn btn-outlined setup-btn-add" id="add-player">+ Add Player</button>
-        <button class="btn btn-filled" id="start-party">Start Party</button>
+        <button class="btn btn-filled btn-main-action" id="start-party">Start Party</button>
     `;
 
     const list = div.querySelector('#players-list');
