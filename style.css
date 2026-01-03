@@ -491,7 +491,7 @@ input {
     min-width: 80%;
     max-width: 400px;
     min-height: 80px;
-    border-radius: 16px; /* Rounder for bigger buttons */
+    border-radius: 16px; /* Squarer corners for main action buttons */
 }
 
 /* Countdown Overlay */
