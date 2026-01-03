@@ -1,10 +1,10 @@
 from playwright.sync_api import sync_playwright
 
-def verify_changes():
+def verify_changes(headless, url):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=headless)
         page = browser.new_page()
-        page.goto("http://localhost:8080")
+        page.goto(url)
 
         # Verify intro page
         print("Verifying Intro Page...")
