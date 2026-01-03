@@ -1,130 +1,67 @@
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
+import time
 
-def verify_changes():
+def run():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
+        context = browser.new_context(viewport={'width': 480, 'height': 800}) # Mobile viewport
         page = context.new_page()
 
-        # 1. Load the app
-        page.goto("http://localhost:8080")
+        # Load the app
+        page.goto("http://localhost:8000/index.html")
 
-        # Wait for app to be ready
-        page.wait_for_selector("#app")
-
-        # If we are in menu (state persisted), reset
-        if page.locator("h1").count() > 0:
-            print("We are likely in menu or game. Resetting storage...")
-            # localStorage.clear() cannot be called directly if strict CSP prevents eval?
-            # Wait, page.evaluate executes in page context. CSP might block it.
-            # But usually Playwright bypasses CSP for evaluate.
-            # The error above was "Refused to evaluate a string as JavaScript".
-            # That was likely wait_for_function using a string.
-
-            try:
-                page.evaluate("localStorage.clear()")
-                page.reload()
-                page.wait_for_selector("#app")
-            except Exception as e:
-                print("Failed to clear local storage via evaluate due to CSP?")
-                print(e)
-                # Manually click back if possible or proceed
-
-        # Click through intro
-        # Use selector that definitely exists in intro
+        # --- Verify Button Corner Radius ---
+        # 1. Intro Screen
+        page.wait_for_selector("#intro-btn")
         intro_btn = page.locator("#intro-btn")
-        if intro_btn.is_visible():
-             # We might need to wait for clickability if there are transitions
-             intro_btn.click()
-        else:
-             print("Intro btn not visible? Content:")
-             print(page.inner_html("#app"))
 
-        # Wait for "Let's Play" text change
-        # Instead of wait_for_function string, use locator assertion or polling
-        try:
-            # wait for text to be Let's Play
-            page.locator("#intro-btn").get_by_text("Let's Play").wait_for(timeout=5000)
-            page.locator("#intro-btn").click()
-        except Exception as e:
-            print("Failed waiting for Let's Play text")
-            print(e)
+        # Verify initial text
+        expect(intro_btn).to_have_text("Click me")
 
-            # If it failed, maybe we are already on Let's Play?
-            if page.locator("#intro-btn", has_text="Let's Play").is_visible():
-                 page.locator("#intro-btn").click()
-            else:
-                 pass
+        # Check border-radius
+        radius = intro_btn.evaluate("el => getComputedStyle(el).borderRadius")
+        print(f"Intro Button Border Radius: {radius}")
+        assert radius == "16px", f"Expected 16px border-radius, got {radius}"
 
-        # Step 1: Mode
-        try:
-            page.get_by_role("button", name="Next").click(timeout=5000)
-        except:
-            # Maybe we are already past it?
-            print("Could not find Next button for Step 1")
-            pass
+        # Click to reveal "Let's Play"
+        intro_btn.click()
+        time.sleep(1) # Wait for animation
+        expect(intro_btn).to_have_text("Let's Play")
+        intro_btn.click()
 
-        # Step 2: Name input - verify persistence (Test part 2)
-        try:
-            page.get_by_label("What should we call you?").fill("TestPlayer")
-        except Exception as e:
-             print("Could not find name input. Dumping content:")
-             print(page.inner_html("#app"))
-             print(e)
-             return
+        # 2. Menu Step 1 (Mode Selection)
+        page.wait_for_selector("#next-btn")
+        next_btn = page.locator("#next-btn")
 
-        # We need to ensure the oninput event fired and saved state.
-        # Force a small wait.
-        # We need to ensure the onchange event fires to save the state.
-        # Blurring the input is more reliable than a fixed timeout.
-        page.get_by_label("What should we call you?").blur()
+        # Check border-radius for Next button
+        radius_next = next_btn.evaluate("el => getComputedStyle(el).borderRadius")
+        print(f"Next Button Border Radius: {radius_next}")
+        assert radius_next == "16px", f"Expected 16px border-radius, got {radius_next}"
 
-        page.reload()
+        # Take screenshot of buttons
+        page.screenshot(path="verification/step1_buttons.png")
 
-        # Verify persistence after reload
-        # We need to navigate back to step 2.
-        # Check if we are at intro again
-        if page.locator("#intro-btn").is_visible():
-            page.locator("#intro-btn").click()
-            # Wait for animation
-            page.wait_for_timeout(1000)
-            page.locator("#intro-btn").click()
-            page.get_by_role("button", name="Next").click()
+        # --- Verify Auto-Focus on Player Name Entry ---
+        # Select Solo Mode (default) and click Next
+        page.locator("#mode-solo").click()
+        next_btn.click()
 
-        input_value = page.get_by_label("What should we call you?").input_value()
-        print(f"Persisted Name: {input_value}")
-        if input_value != "TestPlayer":
-            print("FAILED: Name not persisted")
+        # 3. Menu Step 2 (Player Name)
+        # Wait for the view to transition
+        page.wait_for_selector("#solo-name-input")
 
-        page.screenshot(path="verification/step2_name.png")
+        # Check if input is focused. `expect().to_be_focused()` will wait automatically.
+        expect(page.locator("#solo-name-input")).to_be_focused()
+        print("Is Name Input Focused? Yes")
 
-        # Step 3: Settings - verify seed logic refactor (ensure no crash/error)
-        page.get_by_role("button", name="Next").click()
+        # Take screenshot of name entry
+        page.screenshot(path="verification/step2_name_focus.png")
 
-        # Let's start the game to see the share button.
-        page.get_by_role("button", name="Start Game").click()
+        # The assertion is now handled by `expect`.
 
-        # Wait for game to load
-        page.wait_for_selector(".card")
 
-        # Verify Share Button exists
-        share_btn = page.locator("#share-game-btn")
-        if share_btn.count() > 0:
-            print("Share button found in Game view")
-        else:
-            print("Share button NOT found in Game view")
-
-        page.screenshot(path="verification/game_view.png")
-
-        # Finish game to see Results view share button
-        page.evaluate("setState({ view: 'results', scores: {'TestPlayer': 100}, players: ['TestPlayer'] })")
-
-        page.wait_for_selector("#share-results-code")
-        print("Share button found in Results view")
-
-        page.screenshot(path="verification/results_view.png")
-
+        print("Verification Successful!")
         browser.close()
 
 if __name__ == "__main__":
-    verify_changes()
+    run()
