@@ -50,17 +50,15 @@ def run():
         # Wait for the view to transition
         page.wait_for_selector("#solo-name-input")
 
-        # Check if input is focused
-        # We need to wait a bit because of the setTimeout(..., 500)
-        time.sleep(1.0)
-
-        is_focused = page.evaluate("document.activeElement.id === 'solo-name-input'")
-        print(f"Is Name Input Focused? {is_focused}")
+        # Check if input is focused. `expect().to_be_focused()` will wait automatically.
+        expect(page.locator("#solo-name-input")).to_be_focused()
+        print("Is Name Input Focused? Yes")
 
         # Take screenshot of name entry
         page.screenshot(path="verification/step2_name_focus.png")
 
-        assert is_focused, "Player name input should be focused automatically"
+        # The assertion is now handled by `expect`.
+
 
         print("Verification Successful!")
         browser.close()
